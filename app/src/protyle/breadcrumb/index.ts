@@ -30,7 +30,7 @@ export class Breadcrumb {
         const element = document.createElement("div");
         element.className = "protyle-breadcrumb";
         let html = `<div class="protyle-breadcrumb__bar"></div>
-<span class="fn__flex-1 fn__space fn__flex-shrink"></span>
+<span class="fn__space fn__flex-shrink"></span>
 <button class="b3-tooltips b3-tooltips__w block__icon fn__flex-center" style="opacity: 1;" data-menu="true" aria-label="${window.siyuan.languages.more}"><svg><use xlink:href="#iconMore"></use></svg></button>`;
         if (protyle.options.render.breadcrumbContext) {
             html += `<span class="fn__space"></span>
@@ -166,6 +166,7 @@ export class Breadcrumb {
                         icon: "iconRecord",
                         label: this.mediaRecorder?.isRecording ? window.siyuan.languages.endRecord : window.siyuan.languages.startRecord,
                         click: () => {
+                            let messageId = "";
                             if (!this.mediaRecorder) {
                                 navigator.mediaDevices.getUserMedia({audio: true}).then((mediaStream: MediaStream) => {
                                     this.mediaRecorder = new RecordMedia(mediaStream);
@@ -180,7 +181,7 @@ export class Breadcrumb {
                                         this.mediaRecorder.cloneChannelData(left, right);
                                     };
                                     this.mediaRecorder.startRecordingNewWavFile();
-                                    showMessage(window.siyuan.languages.recording, 86400000);
+                                    messageId = showMessage(window.siyuan.languages.recording, -1);
                                 }).catch(() => {
                                     showMessage(window.siyuan.languages["record-tip"]);
                                 });
@@ -189,12 +190,13 @@ export class Breadcrumb {
 
                             if (this.mediaRecorder.isRecording) {
                                 this.mediaRecorder.stopRecording();
-                                hideMessage();
+                                hideMessage(messageId);
                                 const file: File = new File([this.mediaRecorder.buildWavFileBlob()],
                                     `record${(new Date()).getTime()}.wav`, {type: "video/webm"});
                                 uploadFiles(protyle, [file]);
                             } else {
-                                showMessage(window.siyuan.languages.recording, 86400000);
+                                hideMessage(messageId);
+                                messageId = showMessage(window.siyuan.languages.recording, -1);
                                 this.mediaRecorder.startRecordingNewWavFile();
                             }
                         }
@@ -329,11 +331,8 @@ export class Breadcrumb {
                 type: "submenu",
                 submenu: editSubmenu
             }).element);
-            /// #if !BROWSER
             window.siyuan.menus.menu.append(exportMd(protyle.block.parentID));
-            /// #endif
             window.siyuan.menus.menu.append(new MenuItem({type: "separator"}).element);
-
             window.siyuan.menus.menu.append(new MenuItem({
                 type: "readonly",
                 label: `<div class="fn__flex">${window.siyuan.languages.docRuneCount}<span class="fn__space fn__flex-1"></span>${response.data.rootBlockRuneCount}</div>
@@ -418,7 +417,9 @@ export class Breadcrumb {
                 });
             }
             this.element.classList.add("protyle-breadcrumb__bar--nowrap");
-            this.element.lastElementChild.previousElementSibling.scrollIntoView();
+            if (this.element.lastElementChild) {
+                this.element.scrollLeft = (this.element.lastElementChild as HTMLElement).offsetLeft - this.element.clientWidth - 8;
+            }
         });
     }
 

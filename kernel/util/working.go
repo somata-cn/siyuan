@@ -39,7 +39,7 @@ import (
 var Mode = "prod"
 
 const (
-	Ver       = "2.0.14"
+	Ver       = "2.0.18"
 	IsInsider = false
 )
 
@@ -63,7 +63,7 @@ func Boot() {
 	accessAuthCode := flag.String("accessAuthCode", "", "access auth code")
 	ssl := flag.Bool("ssl", false, "for https and wss")
 	lang := flag.String("lang", "en_US", "zh_CN/zh_CHT/en_US/fr_FR")
-
+	mode := flag.String("mode", "prod", "dev/prod")
 	flag.Parse()
 
 	if "" != *wdPath {
@@ -72,6 +72,7 @@ func Boot() {
 	if "" != *lang {
 		Lang = *lang
 	}
+	Mode = *mode
 	Resident = *resident
 	ReadOnly = *readOnly
 	AccessAuthCode = *accessAuthCode
@@ -249,6 +250,14 @@ func initWorkspaceDir(workspaceArg string) {
 	ConfDir = filepath.Join(WorkspaceDir, "conf")
 	DataDir = filepath.Join(WorkspaceDir, "data")
 	TempDir = filepath.Join(WorkspaceDir, "temp")
+	osTmpDir := filepath.Join(TempDir, "os")
+	os.RemoveAll(osTmpDir)
+	if err := os.MkdirAll(osTmpDir, 0755); nil != err {
+		log.Fatalf("create os tmp dir [%s] failed: %s", osTmpDir, err)
+	}
+	os.Setenv("TMPDIR", osTmpDir)
+	os.Setenv("TEMP", osTmpDir)
+	os.Setenv("TMP", osTmpDir)
 	DBPath = filepath.Join(TempDir, DBName)
 	BlockTreePath = filepath.Join(TempDir, "blocktree.msgpack")
 }

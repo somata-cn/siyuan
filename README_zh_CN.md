@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-<a href="https://github.com/siyuan-note/siyuan/blob/master/README.md">English</a>
+<a href="README.md">English</a>
 </p>
 
 ## 💡 简介
@@ -66,7 +66,7 @@
 * Android APP
 * iOS APP
 * Docker 部署
-* [API](https://github.com/siyuan-note/siyuan/blob/master/API_zh_CN.md)
+* [API](API_zh_CN.md)
 
 ### 付费订阅
 
@@ -184,7 +184,7 @@
 * [Android 端](https://github.com/siyuan-note/siyuan-android)
 * [iOS 端](https://github.com/siyuan-note/siyuan-ios)
 
-更多细节请参考[开发指南](https://github.com/siyuan-note/siyuan/blob/master/DEV_zh_CN.md)。
+更多细节请参考[开发指南](.github/CONTRIBUTING_zh_CN.md)。
 
 ### 删除文档有什么注意事项吗？
 
@@ -241,7 +241,7 @@
 * [Android 端](https://github.com/siyuan-note/siyuan-android)
 * [iOS 端](https://github.com/siyuan-note/siyuan-ios)
 
-更多细节请参考[开发指南](https://github.com/siyuan-note/siyuan/blob/master/DEV_zh_CN.md)。
+更多细节请参考[开发指南](.github/CONTRIBUTING_zh_CN.md)。
 
 ## 🙏 鸣谢
 
@@ -269,6 +269,7 @@
 * [https://github.com/facette/natsort](https://github.com/facette/natsort) `BSD-3-Clause License`
 * [https://github.com/flopp/go-findfont](https://github.com/flopp/go-findfont) `MIT License`
 * [https://github.com/fsnotify/fsnotify](https://github.com/fsnotify/fsnotify) `BSD-3-Clause License`
+* [https://github.com/gabriel-vasile/mimetype](https://github.com/gabriel-vasile/mimetype) `MIT License`
 * [https://github.com/gin-contrib/cors](https://github.com/gin-contrib/cors) `MIT License`
 * [https://github.com/gin-contrib/gzip](https://github.com/gin-contrib/gzip) `MIT License`
 * [https://github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) `MIT License`

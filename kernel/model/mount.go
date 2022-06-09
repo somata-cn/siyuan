@@ -34,8 +34,8 @@ import (
 
 func CreateBox(name string) (id string, err error) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	id = ast.NewNodeID()
 	boxLocalPath := filepath.Join(util.DataDir, id)
@@ -54,8 +54,8 @@ func CreateBox(name string) (id string, err error) {
 
 func RenameBox(boxID, name string) (err error) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	box := Conf.Box(boxID)
 	if nil == box {
@@ -72,8 +72,8 @@ func RenameBox(boxID, name string) (err error) {
 
 func RemoveBox(boxID string) (err error) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	if util.IsReservedFilename(boxID) {
 		return errors.New(fmt.Sprintf("can not remove [%s] caused by it is a reserved file", boxID))
@@ -115,8 +115,8 @@ func RemoveBox(boxID string) (err error) {
 
 func Unmount(boxID string) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	unmount0(boxID)
 	evt := util.NewCmdResult("unmount", 0, util.PushModeBroadcast, 0)
@@ -141,8 +141,8 @@ func unmount0(boxID string) {
 
 func Mount(boxID string) (alreadyMount bool, err error) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	localPath := filepath.Join(util.DataDir, boxID)
 
@@ -179,6 +179,10 @@ func Mount(boxID string) (alreadyMount bool, err error) {
 		go func() {
 			time.Sleep(time.Second * 5)
 			util.PushErrMsg(Conf.Language(52), 9000)
+
+			// 每次打开帮助文档时自动检查版本更新并提醒 https://github.com/siyuan-note/siyuan/issues/5057
+			time.Sleep(time.Second * 10)
+			CheckUpdate(true)
 		}()
 	}
 

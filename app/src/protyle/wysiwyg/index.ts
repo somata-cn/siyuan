@@ -20,7 +20,7 @@ import {isLocalPath, pathPosix} from "../../util/pathName";
 import {genEmptyElement} from "../../block/util";
 import {previewImage} from "../preview/image";
 import {openGlobalSearch} from "../../search/util";
-import {contentMenu, imgMenu, refMenu, setFold, zoomOut} from "../../menus/protyle";
+import {contentMenu, imgMenu, linkMenu, refMenu, setFold, zoomOut} from "../../menus/protyle";
 import * as dayjs from "dayjs";
 import {dropEvent} from "../util/editorCommonEvent";
 import {input} from "./input";
@@ -331,6 +331,7 @@ export class WYSIWYG {
                         headElement.before(emptyElement);
                     }
                     transaction(protyle, doOperations, undoOperations);
+                    focusSideBlock(headElement);
                     tempElement.append(headElement);
                 } else if (range.toString() !== "" && startContainer.isSameNode(range.endContainer) && range.startContainer.nodeType === 3
                     && range.endOffset === range.endContainer.textContent.length && range.startOffset === 0 &&
@@ -428,7 +429,8 @@ export class WYSIWYG {
             const type = target.getAttribute("data-type");
             if (type === "block-ref") {
                 refMenu(protyle, target);
-                setPosition(window.siyuan.menus.menu.element, event.clientX, event.clientY + 13, 26);
+                const rect =target.getBoundingClientRect();
+                setPosition(window.siyuan.menus.menu.element, rect.left, rect.top + 13, 26);
                 // 阻止 popover
                 target.removeAttribute("data-type");
                 setTimeout(() => {
@@ -441,8 +443,10 @@ export class WYSIWYG {
                 return false;
             }
             if (type === "a") {
-                protyle.toolbar.showLink(protyle, target);
-                if (target.getAttribute("data-href").startsWith("siyuan://blocks")) {
+                linkMenu(protyle, target);
+                const rect =target.getBoundingClientRect();
+                setPosition(window.siyuan.menus.menu.element, rect.left, rect.top + 13, 26);
+                if (target.getAttribute("data-href")?.startsWith("siyuan://blocks")) {
                     // 阻止 popover
                     target.setAttribute("prevent-popover", "true");
                     setTimeout(() => {
@@ -1251,10 +1255,11 @@ export class WYSIWYG {
                 } else if (aElement) {
                     refBlockId = aElement.getAttribute("data-href").substring(16, 38);
                 }
-                if (isMobile()) {
-                    openMobileFileById(refBlockId, false, [Constants.CB_GET_ALL]);
-                } else {
-                    fetchPost("/api/block/checkBlockFold", {id: refBlockId}, (foldResponse) => {
+
+                fetchPost("/api/block/checkBlockFold", {id: refBlockId}, (foldResponse) => {
+                    if (isMobile()) {
+                        openMobileFileById(refBlockId, !foldResponse.data, foldResponse.data ? [Constants.CB_GET_ALL, Constants.CB_GET_HL] : [Constants.CB_GET_HL]);
+                    } else {
                         if (window.siyuan.shiftIsPressed) {
                             openFileById({
                                 id: refBlockId,
@@ -1287,8 +1292,8 @@ export class WYSIWYG {
                                 zoomIn: foldResponse.data
                             });
                         }
-                    });
-                }
+                    }
+                });
                 if (protyle.model) {
                     // 打开双链需记录到后退中 https://github.com/siyuan-note/insider/issues/801
                     let blockElement: HTMLElement | false;
@@ -1397,7 +1402,7 @@ export class WYSIWYG {
             const embedItemElement = hasClosestByClassName(event.target, "protyle-wysiwyg__embed");
             if (embedItemElement) {
                 if (isMobile()) {
-                    openMobileFileById(embedItemElement.getAttribute("data-id"), false, [Constants.CB_GET_ALL], true);
+                    openMobileFileById(embedItemElement.getAttribute("data-id"), false, [Constants.CB_GET_ALL]);
                 } else if (!protyle.disabled) {
                     window.siyuan.blockPanels.push(new BlockPanel({
                         targetElement: embedItemElement,

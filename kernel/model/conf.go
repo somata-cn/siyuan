@@ -214,6 +214,9 @@ func InitConf() {
 			util.LogErrorf("create sync dir [%s] failed: %s", Conf.Sync.GetSaveDir(), err)
 		}
 	}
+	if 0 == Conf.Sync.Mode {
+		Conf.Sync.Mode = 1
+	}
 
 	if nil == Conf.Api {
 		Conf.Api = conf.NewAPI()
@@ -534,6 +537,7 @@ func clearWorkspaceTemp() {
 	os.RemoveAll(filepath.Join(util.TempDir, "bazaar"))
 	os.RemoveAll(filepath.Join(util.TempDir, "export"))
 	os.RemoveAll(filepath.Join(util.TempDir, "import"))
+	os.RemoveAll(filepath.Join(util.WorkspaceDir, "incremental")) // `工作空间/incremental/` 文件夹移动到 `工作空间/temp/incremental/` https://github.com/siyuan-note/siyuan/issues/5119
 
 	tmps, err := filepath.Glob(filepath.Join(util.TempDir, "*.tmp"))
 	if nil != err {

@@ -694,8 +694,9 @@ func loadNodesByMode(node *ast.Node, inputIndex, mode, size int, isDoc, isHeadin
 		} else if isHeading {
 			level := node.HeadingLevel
 			for n := node.Next; nil != n; n = n.Next {
-				if "1" == n.IALAttr("heading-fold") && ("1" == node.IALAttr("fold") && 0 == mode) {
-					// 从大纲跳转折叠标题的下方标题时需要判断跳转的标题是否是折叠 https://github.com/siyuan-note/siyuan/issues/4920
+				if "1" == n.IALAttr("heading-fold") {
+					// 大纲点击折叠标题跳转聚焦 https://github.com/siyuan-note/siyuan/issues/4920
+					// 多级标题折叠后上级块引浮窗中未折叠 https://github.com/siyuan-note/siyuan/issues/4997
 					continue
 				}
 				if ast.NodeHeading == n.Type {
@@ -837,13 +838,10 @@ func renameWriteJSONQueue(tree *parse.Tree, oldHPath string) (err error) {
 }
 
 func DuplicateDoc(rootID string) (err error) {
-	util.PushMsg(Conf.Language(116), 30000)
-	defer util.PushClearMsg()
+	msgId := util.PushMsg(Conf.Language(116), 30000)
+	defer util.PushClearMsg(msgId)
 
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
-
 	tree, err := loadTreeByBlockID(rootID)
 	if nil != err {
 		return
@@ -890,8 +888,6 @@ func DuplicateDoc(rootID string) (err error) {
 
 func CreateDocByMd(boxID, p, title, md string) (err error) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
 
 	box := Conf.Box(boxID)
 	if nil == box {
@@ -911,9 +907,6 @@ func CreateWithMarkdown(boxID, hPath, md string) (id string, err error) {
 	}
 
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
-
 	luteEngine := NewLute()
 	dom := luteEngine.Md2BlockDOM(md)
 	id, err = createDocsByHPath(box.ID, hPath, dom)
@@ -981,8 +974,8 @@ func MoveDoc(fromBoxID, fromPath, toBoxID, toPath string) (newPath string, err e
 	}
 
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	tree, err := LoadTree(fromBoxID, fromPath)
 	if nil != err {
@@ -1109,8 +1102,8 @@ func RemoveDoc(boxID, p string) (err error) {
 	}
 
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	tree, err := LoadTree(boxID, p)
 	if nil != err {
@@ -1241,8 +1234,6 @@ func CreateDailyNote(boxID string) (p string, err error) {
 	}
 
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
 
 	existRoot := treenode.GetBlockTreeRootByHPath(box.ID, hPath)
 	if nil != existRoot {
@@ -1453,8 +1444,8 @@ func rootChildIDs(rootID string) (ret []string) {
 
 func ChangeFileTreeSort(boxID string, paths []string) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
+	writingDataLock.Lock()
+	defer writingDataLock.Unlock()
 
 	box := Conf.Box(boxID)
 	sortIDs := map[string]int{}
@@ -1609,8 +1600,6 @@ func (box *Box) removeSort(rootID, path string) {
 
 func ServeFile(c *gin.Context, filePath string) (err error) {
 	WaitForWritingFiles()
-	syncLock.Lock()
-	defer syncLock.Unlock()
 
 	if filesys.IsLocked(filePath) {
 		if err = filesys.UnlockFile(filePath); nil == err {

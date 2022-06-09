@@ -34,6 +34,7 @@ import (
 	"github.com/88250/gulu"
 	"github.com/88250/lute/ast"
 	"github.com/88250/lute/parse"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/siyuan-note/siyuan/kernel/filesys"
 	"github.com/siyuan-note/siyuan/kernel/search"
 	"github.com/siyuan-note/siyuan/kernel/sql"
@@ -77,6 +78,17 @@ func NetImg2LocalAssets(rootID string) (err error) {
 			dest := linkDest.Tokens
 			if !sql.IsAssetLinkDest(dest) && (bytes.HasPrefix(bytes.ToLower(dest), []byte("https://")) || bytes.HasPrefix(bytes.ToLower(dest), []byte("http://"))) {
 				u := string(dest)
+				if strings.Contains(u, "qpic.cn") {
+					// 微信图片拉取改进 https://github.com/siyuan-note/siyuan/issues/5052
+					if strings.Contains(u, "http://") {
+						u = strings.Replace(u, "http://", "https://", 1)
+					}
+					if strings.HasSuffix(u, "/0") {
+						u = strings.Replace(u, "/0", "/640", 1)
+					} else if strings.Contains(u, "/0?") {
+						u = strings.Replace(u, "/0?", "/640?", 1)
+					}
+				}
 				util.PushMsg(fmt.Sprintf(Conf.Language(119), u), 15000)
 				request := util.NewBrowserRequest(Conf.System.NetworkProxy.String())
 				resp, reqErr := request.Get(u)
@@ -105,6 +117,11 @@ func NetImg2LocalAssets(rootID string) (err error) {
 				}
 				name, _ = url.PathUnescape(name)
 				ext := path.Ext(name)
+				if "" == ext {
+					if mtype := mimetype.Detect(data); nil != mtype {
+						ext = mtype.Extension()
+					}
+				}
 				if "" == ext {
 					contentType := resp.Header.Get("Content-Type")
 					exts, _ := mime.ExtensionsByType(contentType)
@@ -353,8 +370,11 @@ func saveWorkspaceAssets(assets []string) {
 }
 
 func RemoveUnusedAssets() (ret []string) {
-	util.PushMsg(Conf.Language(100), 30*1000)
-	defer util.PushMsg(Conf.Language(99), 3000)
+	msgId := util.PushMsg(Conf.Language(100), 30*1000)
+	defer func() {
+		util.PushClearMsg(msgId)
+		util.PushMsg(Conf.Language(99), 3000)
+	}()
 
 	ret = []string{}
 	unusedAssets := UnusedAssets()

@@ -42,8 +42,10 @@ const getCloudList = (reload = false) => {
 
 const renderCloudBackup = () => {
     fetchPost("/api/cloud/getCloudSpace", {}, (response) => {
+        repos.element.querySelector("#reposLoading").classList.add("fn__none");
         if (response.code === 1) {
             repos.element.querySelector("#reposData").innerHTML = response.msg;
+            return;
         } else {
             repos.element.querySelector("#reposData").innerHTML = `<div class="fn__flex">
     <div class="fn__flex-1">
@@ -118,7 +120,6 @@ const renderCloudBackup = () => {
 </div>`;
         }
         repos.element.querySelector("#reposBackup").innerHTML = actionHTML;
-        repos.element.querySelector("#reposLoading").classList.add("fn__none");
     });
 };
 
@@ -305,7 +306,16 @@ export const repos = {
         return `<div><div style="position: fixed;width: 800px;height: 434px;box-sizing: border-box;text-align: center;display: flex;align-items: center;justify-content: center;z-index: 1;" id="reposLoading">
     <img src="/stage/loading-pure.svg">
 </div>
-<div id="reposData" class="b3-label"></div>
+<div id="reposData" class="b3-label">
+    <div class="fn__flex">
+        <div class="fn__flex-1">
+            ${window.siyuan.languages.cloudStorage}
+        </div>
+        <div class="fn__flex-1">
+            ${window.siyuan.languages.trafficStat}
+        </div>
+    </div>
+</div>
 ${passwordHTML}
 <label class="fn__flex b3-label">
     <div class="fn__flex-1">
@@ -314,6 +324,17 @@ ${passwordHTML}
     </div>
     <span class="fn__space"></span>
     <input type="checkbox" id="reposCloudSyncSwitch"${window.siyuan.config.sync.enabled ? " checked='checked'" : ""} class="b3-switch fn__flex-center">
+</label>
+<label class="fn__flex b3-label">
+    <div class="fn__flex-1">
+        ${window.siyuan.languages.syncMode}
+        <div class="b3-label__text">${window.siyuan.languages.syncModeTip}</div>
+    </div>
+    <span class="fn__space"></span>
+    <select id="syncMode" class="b3-select fn__flex-center fn__size200">
+        <option value="1" ${window.siyuan.config.sync.mode === 1 ? "selected" : ""}>${window.siyuan.languages.syncMode1}</option>
+        <option value="2" ${window.siyuan.config.sync.mode === 2 ? "selected" : ""}>${window.siyuan.languages.syncMode2}</option>
+    </select>
 </label>
 <div class="b3-label">
     <div class="fn__flex">
@@ -325,7 +346,8 @@ ${passwordHTML}
     </div>
     <div id="reposCloudSyncList" class="fn__none config-repos__sync"><img style="margin: 0 auto;display: block;" src="/stage/loading-pure.svg"></div>
 </div>
-<div id="reposBackup" class="b3-label"></div></div>`;
+<div id="reposBackup" class="b3-label">${window.siyuan.languages.cloudBackup}</div>
+</div>`;
     },
     bindEvent: () => {
         if (needSubscribe("")) {
@@ -348,6 +370,17 @@ ${passwordHTML}
                     switchElement.checked = false;
                 } else {
                     window.siyuan.config.sync.enabled = switchElement.checked;
+                }
+            });
+        });
+        const syncModeElement = repos.element.querySelector("#syncMode") as HTMLSelectElement;
+        syncModeElement.addEventListener("change", () => {
+            fetchPost("/api/sync/setSyncMode", {mode: parseInt(syncModeElement.value, 10)}, (response) => {
+                if (response.code === 1) {
+                    showMessage(response.msg);
+                    syncModeElement.value = "1";
+                } else {
+                    window.siyuan.config.sync.mode = parseInt(syncModeElement.value, 10);
                 }
             });
         });
