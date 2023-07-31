@@ -1,6 +1,7 @@
-import {hideMessage, showMessage} from "../dialog/message";
+/// #if !MOBILE
 import {exportLayout} from "../layout/util";
-import {isMobile} from "./functions";
+/// #endif
+import {hideMessage, showMessage} from "../dialog/message";
 
 export const processMessage = (response: IWebSocketData) => {
     if ("msg" === response.cmd) {
@@ -19,11 +20,16 @@ export const processMessage = (response: IWebSocketData) => {
         return false;
     }
     if ("reloadui" === response.cmd) {
-        if (isMobile()) {
-            window.location.reload();
-        } else {
-            exportLayout(true);
-        }
+        /// #if MOBILE
+        window.location.reload();
+        /// #else
+        exportLayout({
+            reload: true,
+            onlyData: false,
+            errorExit: false,
+            dropEditScroll: response.data?.resetScroll,
+        });
+        /// #endif
         return false;
     }
 

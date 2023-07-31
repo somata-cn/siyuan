@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -28,6 +28,115 @@ import (
 	"github.com/siyuan-note/siyuan/kernel/sql"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
+
+func setBazaar(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	param, err := gulu.JSON.MarshalJSON(arg)
+	if nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+
+	bazaar := &conf.Bazaar{}
+	if err = gulu.JSON.UnmarshalJSON(param, bazaar); nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+
+	model.Conf.Bazaar = bazaar
+	model.Conf.Save()
+
+	ret.Data = bazaar
+}
+
+func setAI(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	param, err := gulu.JSON.MarshalJSON(arg)
+	if nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+
+	ai := &conf.AI{}
+	if err = gulu.JSON.UnmarshalJSON(param, ai); nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+
+	if 5 > ai.OpenAI.APITimeout {
+		ai.OpenAI.APITimeout = 5
+	}
+	if 600 < ai.OpenAI.APITimeout {
+		ai.OpenAI.APITimeout = 600
+	}
+
+	if 0 > ai.OpenAI.APIMaxTokens {
+		ai.OpenAI.APIMaxTokens = 0
+	}
+	if 4096 < ai.OpenAI.APIMaxTokens {
+		ai.OpenAI.APIMaxTokens = 4096
+	}
+
+	model.Conf.AI = ai
+	model.Conf.Save()
+
+	ret.Data = ai
+}
+
+func setFlashcard(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	param, err := gulu.JSON.MarshalJSON(arg)
+	if nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+
+	flashcard := &conf.Flashcard{}
+	if err = gulu.JSON.UnmarshalJSON(param, flashcard); nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+
+	if 0 > flashcard.NewCardLimit {
+		flashcard.NewCardLimit = 20
+	}
+
+	if 0 > flashcard.ReviewCardLimit {
+		flashcard.ReviewCardLimit = 200
+	}
+
+	model.Conf.Flashcard = flashcard
+	model.Conf.Save()
+
+	ret.Data = flashcard
+}
 
 func setAccount(c *gin.Context) {
 	ret := gulu.Ret.NewResult()
@@ -87,11 +196,31 @@ func setEditor(c *gin.Context) {
 		editor.PlantUMLServePath = "https://www.plantuml.com/plantuml/svg/~1"
 	}
 
+	if "" == editor.KaTexMacros {
+		editor.KaTexMacros = "{}"
+	}
+
+	oldVirtualBlockRef := model.Conf.Editor.VirtualBlockRef
+	oldVirtualBlockRefInclude := model.Conf.Editor.VirtualBlockRefInclude
+	oldVirtualBlockRefExclude := model.Conf.Editor.VirtualBlockRefExclude
+	oldReadOnly := model.Conf.Editor.ReadOnly
+
 	model.Conf.Editor = editor
 	model.Conf.Save()
 
 	if oldGenerateHistoryInterval != model.Conf.Editor.GenerateHistoryInterval {
 		model.ChangeHistoryTick(editor.GenerateHistoryInterval)
+	}
+
+	if oldVirtualBlockRef != model.Conf.Editor.VirtualBlockRef ||
+		oldVirtualBlockRefInclude != model.Conf.Editor.VirtualBlockRefInclude ||
+		oldVirtualBlockRefExclude != model.Conf.Editor.VirtualBlockRefExclude {
+		model.ResetVirtualBlockRefCache()
+	}
+
+	if oldReadOnly != model.Conf.Editor.ReadOnly {
+		util.BroadcastByType("protyle", "readonly", 0, "", model.Conf.Editor.ReadOnly)
+		util.BroadcastByType("main", "readonly", 0, "", model.Conf.Editor.ReadOnly)
 	}
 
 	ret.Data = model.Conf.Editor
@@ -123,10 +252,10 @@ func setExport(c *gin.Context) {
 
 	if "" != export.PandocBin {
 		if !util.IsValidPandocBin(export.PandocBin) {
-			ret.Code = -1
-			ret.Msg = fmt.Sprintf(model.Conf.Language(117), export.PandocBin)
-			ret.Data = map[string]interface{}{"closeTimeout": 5000}
-			return
+			util.PushErrMsg(fmt.Sprintf(model.Conf.Language(117), export.PandocBin), 5000)
+			export.PandocBin = util.PandocBinPath
+		} else {
+			util.PandocBinPath = export.PandocBin
 		}
 	}
 
@@ -152,7 +281,7 @@ func setFiletree(c *gin.Context) {
 		return
 	}
 
-	fileTree := &conf.FileTree{}
+	fileTree := conf.NewFileTree()
 	if err = gulu.JSON.UnmarshalJSON(param, fileTree); nil != err {
 		ret.Code = -1
 		ret.Msg = err.Error()
@@ -166,8 +295,25 @@ func setFiletree(c *gin.Context) {
 		}
 	}
 
+	fileTree.DocCreateSavePath = strings.TrimSpace(fileTree.DocCreateSavePath)
+	if "../" == fileTree.DocCreateSavePath {
+		fileTree.DocCreateSavePath = "../Untitled"
+	}
+	for strings.HasSuffix(fileTree.DocCreateSavePath, "/") {
+		fileTree.DocCreateSavePath = strings.TrimSuffix(fileTree.DocCreateSavePath, "/")
+		fileTree.DocCreateSavePath = strings.TrimSpace(fileTree.DocCreateSavePath)
+	}
+
+	if 1 > fileTree.MaxOpenTabCount {
+		fileTree.MaxOpenTabCount = 8
+	}
+	if 32 < fileTree.MaxOpenTabCount {
+		fileTree.MaxOpenTabCount = 32
+	}
 	model.Conf.FileTree = fileTree
 	model.Conf.Save()
+
+	util.UseSingleLineSave = model.Conf.FileTree.UseSingleLineSave
 
 	ret.Data = model.Conf.FileTree
 }
@@ -195,14 +341,34 @@ func setSearch(c *gin.Context) {
 		return
 	}
 
-	if 1 > s.Limit {
+	if 32 > s.Limit {
 		s.Limit = 32
 	}
 
+	oldCaseSensitive := model.Conf.Search.CaseSensitive
+	oldIndexAssetPath := model.Conf.Search.IndexAssetPath
+
+	oldVirtualRefName := model.Conf.Search.VirtualRefName
+	oldVirtualRefAlias := model.Conf.Search.VirtualRefAlias
+	oldVirtualRefAnchor := model.Conf.Search.VirtualRefAnchor
+	oldVirtualRefDoc := model.Conf.Search.VirtualRefDoc
+
 	model.Conf.Search = s
 	model.Conf.Save()
+
 	sql.SetCaseSensitive(s.CaseSensitive)
-	sql.ClearVirtualRefKeywords()
+	sql.SetIndexAssetPath(s.IndexAssetPath)
+
+	if needFullReindex := s.CaseSensitive != oldCaseSensitive || s.IndexAssetPath != oldIndexAssetPath; needFullReindex {
+		model.FullReindex()
+	}
+
+	if oldVirtualRefName != s.VirtualRefName ||
+		oldVirtualRefAlias != s.VirtualRefAlias ||
+		oldVirtualRefAnchor != s.VirtualRefAnchor ||
+		oldVirtualRefDoc != s.VirtualRefDoc {
+		model.ResetVirtualBlockRefCache()
+	}
 	ret.Data = s
 }
 
@@ -258,6 +424,7 @@ func setAppearance(c *gin.Context) {
 
 	model.Conf.Appearance = appearance
 	model.Conf.Lang = appearance.Lang
+	util.Lang = model.Conf.Lang
 	model.Conf.Save()
 	model.InitAppearance()
 
@@ -313,43 +480,6 @@ func login2faCloudUser(c *gin.Context) {
 	ret.Data = data
 }
 
-func getCustomCSS(c *gin.Context) {
-	ret := gulu.Ret.NewResult()
-	defer c.JSON(http.StatusOK, ret)
-
-	arg, ok := util.JsonArg(c, ret)
-	if !ok {
-		return
-	}
-
-	themeName := arg["theme"].(string)
-	customCSS, err := model.ReadCustomCSS(themeName)
-	if nil != err {
-		ret.Code = -1
-		ret.Msg = err.Error()
-		return
-	}
-	ret.Data = customCSS
-}
-
-func setCustomCSS(c *gin.Context) {
-	ret := gulu.Ret.NewResult()
-	defer c.JSON(http.StatusOK, ret)
-
-	arg, ok := util.JsonArg(c, ret)
-	if !ok {
-		return
-	}
-
-	themeName := arg["theme"].(string)
-	css := arg["css"].(map[string]interface{})
-	if err := model.WriteCustomCSS(themeName, css); nil != err {
-		ret.Code = -1
-		ret.Msg = err.Error()
-		return
-	}
-}
-
 func setEmoji(c *gin.Context) {
 	ret := gulu.Ret.NewResult()
 	defer c.JSON(http.StatusOK, ret)
@@ -366,19 +496,4 @@ func setEmoji(c *gin.Context) {
 	}
 
 	model.Conf.Editor.Emoji = emoji
-}
-
-func setSearchCaseSensitive(c *gin.Context) {
-	ret := gulu.Ret.NewResult()
-	defer c.JSON(http.StatusOK, ret)
-
-	arg, ok := util.JsonArg(c, ret)
-	if !ok {
-		return
-	}
-
-	caseSensitive := arg["caseSensitive"].(bool)
-	model.Conf.Search.CaseSensitive = caseSensitive
-	model.Conf.Save()
-	sql.SetCaseSensitive(caseSensitive)
 }

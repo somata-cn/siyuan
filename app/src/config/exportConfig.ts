@@ -1,8 +1,9 @@
 import {fetchPost} from "../util/fetch";
 /// #if !BROWSER
 import {dialog} from "@electron/remote";
-import {SaveDialogReturnValue, shell} from "electron";
+import {shell} from "electron";
 import {afterExport} from "../protyle/export/util";
+import * as path from "path";
 /// #endif
 import {isBrowser} from "../util/functions";
 import {showMessage} from "../dialog/message";
@@ -28,7 +29,15 @@ export const exportConfig = {
 </label>
 <label class="fn__flex b3-label">
     <div class="fn__flex-1">
-        ${window.siyuan.languages.blockRef}
+        ${window.siyuan.languages.export23}
+        <div class="b3-label__text">${window.siyuan.languages.export24}</div>
+    </div>
+    <span class="fn__space"></span>
+    <input class="b3-switch fn__flex-center" id="markdownYFM" type="checkbox"${window.siyuan.config.export.markdownYFM ? " checked" : ""}/>
+</label>
+<label class="fn__flex b3-label config__item">
+    <div class="fn__flex-1">
+        ${window.siyuan.languages.ref}
         <div class="b3-label__text">${window.siyuan.languages.export11}</div>
     </div>
     <span class="fn__space"></span>
@@ -38,7 +47,7 @@ export const exportConfig = {
         <option value="4" ${window.siyuan.config.export.blockRefMode === 4 ? "selected" : ""}>${window.siyuan.languages.export4}</option>
     </select>
 </label>
-<label class="fn__flex b3-label">
+<label class="fn__flex b3-label config__item">
     <div class="fn__flex-1">
         ${window.siyuan.languages.blockEmbed}
         <div class="b3-label__text">${window.siyuan.languages.export12}</div>
@@ -49,7 +58,7 @@ export const exportConfig = {
         <option value="1" ${window.siyuan.config.export.blockEmbedMode === 1 ? "selected" : ""}>${window.siyuan.languages.export1}</option>
     </select>
 </label>
-<label class="fn__flex b3-label">
+<label class="fn__flex b3-label config__item">
     <div class="fn__flex-1">
         ${window.siyuan.languages.export5}
         <div class="b3-label__text">${window.siyuan.languages.export6}</div>
@@ -60,48 +69,55 @@ export const exportConfig = {
         <option value="1" ${window.siyuan.config.export.fileAnnotationRefMode === 1 ? "selected" : ""}>${window.siyuan.languages.export8}</option>
     </select>
 </label>
-<label class="fn__flex b3-label">
+<label class="fn__flex b3-label config__item">
+    <div class="fn__flex-1">
+        ${window.siyuan.languages.export21}
+        <div class="b3-label__text">${window.siyuan.languages.export22}</div>
+    </div>
+    <input class="b3-text-field fn__flex-center fn__size200" id="pdfFooter">
+</label>
+<label class="fn__flex b3-label config__item">
     <div class="fn__flex-1">
         ${window.siyuan.languages.export13}
         <div class="b3-label__text">${window.siyuan.languages.export14}</div>
     </div>
     <span class="fn__space"></span>
-    <input class="b3-text-field fn__flex-center" id="blockRefTextLeft" style="width: 96px">
+    <input class="b3-text-field fn__flex-center fn__size96" id="blockRefTextLeft">
     <span class="fn__space"></span>
-    <input class="b3-text-field fn__flex-center" id="blockRefTextRight" style="width: 96px">
+    <input class="b3-text-field fn__flex-center fn__size96" id="blockRefTextRight">
 </label>
-<label class="fn__flex b3-label">
+<label class="fn__flex b3-label config__item">
     <div class="fn__flex-1">
         ${window.siyuan.languages.export15}
         <div class="b3-label__text">${window.siyuan.languages.export16}</div>
     </div>
     <span class="fn__space"></span>
-    <input class="b3-text-field fn__flex-center" id="tagOpenMarker" style="width: 96px">
+    <input class="b3-text-field fn__flex-center fn__size96" id="tagOpenMarker">
     <span class="fn__space"></span>
-    <input class="b3-text-field fn__flex-center" id="tagCloseMarker" style="width: 96px">
+    <input class="b3-text-field fn__flex-center fn__size96" id="tagCloseMarker">
 </label>
-<label class="fn__flex b3-label${isBrowser() ? " fn__none" : ""}">
+<label class="fn__flex b3-label config__item${isBrowser() ? " fn__none" : ""}">
     <div class="fn__flex-1">
         ${window.siyuan.languages.export19}
         <span class="fn__space"></span>
-        <a href="javascript:void(0)" id="pandocBinPath">${window.siyuan.config.export.pandocBin}</a>
+        <a href="javascript:void(0)" id="pandocBinPath" style="word-break: break-all">${window.siyuan.config.export.pandocBin}</a>
         <div class="b3-label__text">${window.siyuan.languages.export20}</div>
     </div>
     <span class="fn__space"></span>
     <button class="b3-button b3-button--outline fn__flex-center fn__size200" id="pandocBin"><svg><use xlink:href="#iconSettings"></use></svg>${window.siyuan.languages.config}</button>
 </label>
-<label class="fn__flex b3-label">
+<label class="fn__flex b3-label config__item">
     <div class="fn__flex-1 fn__flex-center">
         ${window.siyuan.languages.export} Data
-        <div class="b3-label__text b3-typography">${window.siyuan.languages.exportDataTip}</div>
+        <div class="b3-label__text">${window.siyuan.languages.exportDataTip}</div>
     </div>
     <span class="fn__space"></span>
     <button class="b3-button b3-button--outline fn__flex-center fn__size200" id="exportData"><svg><use xlink:href="#iconUpload"></use></svg>${window.siyuan.languages.export}</button>
 </label>
-<div class="fn__flex b3-label">
+<div class="fn__flex b3-label config__item">
     <div class="fn__flex-1 fn__flex-center">
         ${window.siyuan.languages.import} Data
-        <div class="b3-label__text b3-typography">${window.siyuan.languages.importDataTip}</div>
+        <div class="b3-label__text">${window.siyuan.languages.importDataTip}</div>
     </div>
     <span class="fn__space"></span>
     <button class="b3-button b3-button--outline fn__flex-center fn__size200" style="position: relative">
@@ -111,6 +127,7 @@ export const exportConfig = {
 </div>`;
     },
     bindEvent: () => {
+        (exportConfig.element.querySelector("#pdfFooter") as HTMLInputElement).value = window.siyuan.config.export.pdfFooter;
         (exportConfig.element.querySelector("#blockRefTextLeft") as HTMLInputElement).value = window.siyuan.config.export.blockRefTextLeft;
         (exportConfig.element.querySelector("#blockRefTextRight") as HTMLInputElement).value = window.siyuan.config.export.blockRefTextRight;
         (exportConfig.element.querySelector("#tagOpenMarker") as HTMLInputElement).value = window.siyuan.config.export.tagOpenMarker;
@@ -120,9 +137,11 @@ export const exportConfig = {
             fetchPost("/api/setting/setExport", {
                 paragraphBeginningSpace: (exportConfig.element.querySelector("#paragraphBeginningSpace") as HTMLInputElement).checked,
                 addTitle: (exportConfig.element.querySelector("#addTitle") as HTMLInputElement).checked,
+                markdownYFM: (exportConfig.element.querySelector("#markdownYFM") as HTMLInputElement).checked,
                 blockRefMode: parseInt((exportConfig.element.querySelector("#blockRefMode") as HTMLSelectElement).value, 10),
                 blockEmbedMode: parseInt((exportConfig.element.querySelector("#blockEmbedMode") as HTMLSelectElement).value, 10),
                 fileAnnotationRefMode: parseInt((exportConfig.element.querySelector("#fileAnnotationRefMode") as HTMLSelectElement).value, 10),
+                pdfFooter: (exportConfig.element.querySelector("#pdfFooter") as HTMLInputElement).value,
                 blockRefTextLeft: (exportConfig.element.querySelector("#blockRefTextLeft") as HTMLInputElement).value,
                 blockRefTextRight: (exportConfig.element.querySelector("#blockRefTextRight") as HTMLInputElement).value,
                 tagOpenMarker: (exportConfig.element.querySelector("#tagOpenMarker") as HTMLInputElement).value,
@@ -157,19 +176,20 @@ export const exportConfig = {
                 window.location.href = response.data.zip;
             });
             /// #else
-            dialog.showSaveDialog({
-                defaultPath: "data",
-                properties: ["showOverwriteConfirmation"],
-            }).then((result: SaveDialogReturnValue) => {
-                if (!result.canceled) {
-                    const msgId = showMessage(window.siyuan.languages.exporting, -1);
-                    fetchPost("/api/export/exportDataInFolder", {
-                        folder: result.filePath
-                    }, () => {
-                        afterExport(result.filePath, msgId);
-                    });
-                }
+            const filePaths = dialog.showOpenDialogSync({
+                title: window.siyuan.languages.export + " " + "Data",
+                properties: ["createDirectory", "openDirectory"],
             });
+            if (filePaths && 0 < filePaths.length) {
+                const savePath = filePaths[0];
+                const msgId = showMessage(window.siyuan.languages.exporting, -1);
+                fetchPost("/api/export/exportDataInFolder", {
+                    folder: savePath,
+                }, response => {
+                    afterExport(path.join(savePath, response.data.name), msgId);
+                });
+            }
+
             /// #endif
         });
         /// #if !BROWSER

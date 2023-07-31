@@ -1,10 +1,11 @@
 {
 	"ID": "20210721160238-yvhbh0h",
+	"Spec": "1",
 	"Type": "NodeDocument",
 	"Properties": {
 		"id": "20210721160238-yvhbh0h",
-		"title": "Assets Serving",
-		"updated": "20220408193053"
+		"title": "Assets hosting",
+		"updated": "20230621111510"
 	},
 	"Children": [
 		{
@@ -12,12 +13,12 @@
 			"Type": "NodeParagraph",
 			"Properties": {
 				"id": "20210721160254-thunmzr",
-				"updated": "20210721160328"
+				"updated": "20220708103429"
 			},
 			"Children": [
 				{
 					"Type": "NodeText",
-					"Data": "SiYuan provides cloud assets serving, which is mainly used to copy documents and asset files to platforms such as WeChat MP, Zhihu and Yuque. The editors of these platforms will automatically pull resource files to their platforms when pasting."
+					"Data": "SiYuan provides cloud assets hosting, which is mainly used to copy documents and asset files to platforms such as WeChat MP, Zhihu and Yuque. The editors of these platforms will automatically pull resource files to their platforms when pasting."
 				}
 			]
 		},
@@ -74,40 +75,18 @@
 									"Data": "In the upper right corner of the document, select "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "..."
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "..."
 								},
 								{
 									"Type": "NodeText",
 									"Data": " in the More menu and select "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "Upload asset files to cloud"
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "Upload asset files to cloud"
 								}
 							]
 						}
@@ -140,40 +119,18 @@
 									"Data": "Select "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "Export Preview"
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "Export Preview"
 								},
 								{
 									"Type": "NodeText",
 									"Data": " in "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "Toogle Mode"
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "Toogle Mode"
 								}
 							]
 						}
@@ -206,60 +163,27 @@
 									"Data": "Click "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "Copy to Wechat MP"
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "Copy to Wechat MP"
 								},
 								{
 									"Type": "NodeText",
 									"Data": ", "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "Copy to Zhihu"
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "Copy to Zhihu"
 								},
 								{
 									"Type": "NodeText",
 									"Data": " or "
 								},
 								{
-									"Type": "NodeKbd",
-									"Data": "kbd",
-									"Children": [
-										{
-											"Type": "NodeKbdOpenMarker"
-										},
-										{
-											"Type": "NodeText",
-											"Data": "Copy to Yuque"
-										},
-										{
-											"Type": "NodeKbdCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "kbd",
+									"TextMarkTextContent": "Copy to Yuque"
 								}
 							]
 						}
@@ -300,42 +224,54 @@
 			"Type": "NodeParagraph",
 			"Properties": {
 				"id": "20220407085720-uruuriu",
-				"updated": "20220408193053"
+				"updated": "20230621111510"
 			},
 			"Children": [
 				{
 					"Type": "NodeText",
-					"Data": "If you need to delete the files in the cloud assets serving, please go to "
-				},
-				{
-					"Type": "NodeLink",
-					"Data": "span",
-					"Children": [
-						{
-							"Type": "NodeOpenBracket"
-						},
-						{
-							"Type": "NodeLinkText",
-							"Data": "LianDi - Settings - File - Note"
-						},
-						{
-							"Type": "NodeCloseBracket"
-						},
-						{
-							"Type": "NodeOpenParen"
-						},
-						{
-							"Type": "NodeLinkDest",
-							"Data": "https://ld246.com/settings/file?type=3"
-						},
-						{
-							"Type": "NodeCloseParen"
-						}
-					]
+					"Data": "If you need to delete the files in the "
 				},
 				{
 					"Type": "NodeText",
-					"Data": " to operate. After deletion, the cloud storage space occupied by the file will be released immediately, but the CDN cache cleaning may not take effect in time, which will cause the file URL to remain accessible until the CDN cache expires automatically after 30 days."
+					"Data": "cloud"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " "
+				},
+				{
+					"Type": "NodeText",
+					"Data": "assets"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " hosting, please go to "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "a",
+					"TextMarkAHref": "https://liuyun.io/settings/file?type=3",
+					"TextMarkTextContent": "LiuYun - Settings - File - Note"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " to operate. After deletion, the "
+				},
+				{
+					"Type": "NodeText",
+					"Data": "cloud"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " "
+				},
+				{
+					"Type": "NodeText",
+					"Data": "storage"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " space occupied by the file will be released immediately, but the CDN cache cleaning may not take effect in time, which will cause the file URL to remain accessible until the CDN cache expires automatically after 30 days."
 				}
 			]
 		},
@@ -349,20 +285,9 @@
 			},
 			"Children": [
 				{
-					"Type": "NodeTag",
-					"Data": "span",
-					"Children": [
-						{
-							"Type": "NodeTagOpenMarker"
-						},
-						{
-							"Type": "NodeText",
-							"Data": "Note"
-						},
-						{
-							"Type": "NodeTagCloseMarker"
-						}
-					]
+					"Type": "NodeTextMark",
+					"TextMarkType": "tag",
+					"TextMarkTextContent": "Note"
 				}
 			]
 		},

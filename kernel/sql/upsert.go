@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,13 +17,16 @@
 package sql
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"github.com/siyuan-note/siyuan/kernel/filesys"
 	"strings"
 
 	"github.com/88250/lute/parse"
 	"github.com/emirpasic/gods/sets/hashset"
-	"github.com/siyuan-note/siyuan/kernel/treenode"
+	"github.com/siyuan-note/eventbus"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
@@ -31,19 +34,6 @@ var luteEngine = util.NewLute()
 
 func init() {
 	luteEngine.RenderOptions.KramdownBlockIAL = false // 数据库 markdown 字段为标准 md，但是要保留 span block ial
-}
-
-func InsertBlocksSpans(tx *sql.Tx, tree *parse.Tree) (err error) {
-	if err = insertBlocksSpans(tx, tree); nil != err {
-		util.LogErrorf("insert tree [%s] into database failed: %s", tree.Box+tree.Path, err)
-	}
-	return
-}
-
-func InsertRefs(tx *sql.Tx, tree *parse.Tree) {
-	if err := insertRef(tx, tree); nil != err {
-		util.LogErrorf("insert refs tree [%s] into database failed: %s", tree.Box+tree.Path, err)
-	}
 }
 
 const (
@@ -61,7 +51,7 @@ const (
 	FileAnnotationRefsPlaceholder = "(?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
-func insertBlocks(tx *sql.Tx, blocks []*Block) (err error) {
+func insertBlocks(tx *sql.Tx, blocks []*Block, context map[string]interface{}) (err error) {
 	if 1 > len(blocks) {
 		return
 	}
@@ -73,22 +63,23 @@ func insertBlocks(tx *sql.Tx, blocks []*Block) (err error) {
 			continue
 		}
 
-		if err = insertBlocks0(tx, bulk); nil != err {
+		if err = insertBlocks0(tx, bulk, context); nil != err {
 			return
 		}
 		bulk = []*Block{}
 	}
 	if 0 < len(bulk) {
-		if err = insertBlocks0(tx, bulk); nil != err {
+		if err = insertBlocks0(tx, bulk, context); nil != err {
 			return
 		}
 	}
 	return
 }
 
-func insertBlocks0(tx *sql.Tx, bulk []*Block) (err error) {
+func insertBlocks0(tx *sql.Tx, bulk []*Block, context map[string]interface{}) (err error) {
 	valueStrings := make([]string, 0, len(bulk))
 	valueArgs := make([]interface{}, 0, len(bulk)*strings.Count(BlocksPlaceholder, "?"))
+	hashBuf := bytes.Buffer{}
 	for _, b := range bulk {
 		valueStrings = append(valueStrings, BlocksPlaceholder)
 		valueArgs = append(valueArgs, b.ID)
@@ -112,21 +103,33 @@ func insertBlocks0(tx *sql.Tx, bulk []*Block) (err error) {
 		valueArgs = append(valueArgs, b.Sort)
 		valueArgs = append(valueArgs, b.Created)
 		valueArgs = append(valueArgs, b.Updated)
-
 		putBlockCache(b)
+
+		hashBuf.WriteString(b.Hash)
 	}
+
 	stmt := fmt.Sprintf(BlocksInsert, strings.Join(valueStrings, ","))
 	if err = prepareExecInsertTx(tx, stmt, valueArgs); nil != err {
 		return
 	}
+	hashBuf.WriteString("blocks")
+	evtHash := fmt.Sprintf("%x", sha256.Sum256(hashBuf.Bytes()))[:7]
+	//eventbus.Publish(eventbus.EvtSQLInsertBlocks, context, current, total, len(bulk), evtHash)
+
 	stmt = fmt.Sprintf(BlocksFTSInsert, strings.Join(valueStrings, ","))
 	if err = prepareExecInsertTx(tx, stmt, valueArgs); nil != err {
 		return
 	}
-	stmt = fmt.Sprintf(BlocksFTSCaseInsensitiveInsert, strings.Join(valueStrings, ","))
-	if err = prepareExecInsertTx(tx, stmt, valueArgs); nil != err {
-		return
+
+	if !caseSensitive {
+		stmt = fmt.Sprintf(BlocksFTSCaseInsensitiveInsert, strings.Join(valueStrings, ","))
+		if err = prepareExecInsertTx(tx, stmt, valueArgs); nil != err {
+			return
+		}
 	}
+	hashBuf.WriteString("fts")
+	evtHash = fmt.Sprintf("%x", sha256.Sum256(hashBuf.Bytes()))[:7]
+	eventbus.Publish(eventbus.EvtSQLInsertBlocksFTS, context, len(bulk), evtHash)
 	return
 }
 
@@ -276,7 +279,7 @@ func insertSpans0(tx *sql.Tx, bulk []*Span) (err error) {
 	return
 }
 
-func insertRefs(tx *sql.Tx, refs []*Ref) (err error) {
+func insertBlockRefs(tx *sql.Tx, refs []*Ref) (err error) {
 	if 1 > len(refs) {
 		return
 	}
@@ -379,26 +382,9 @@ func insertFileAnnotationRefs0(tx *sql.Tx, bulk []*FileAnnotationRef) (err error
 	return
 }
 
-func insertBlocksSpans(tx *sql.Tx, tree *parse.Tree) (err error) {
-	blocks, spans, assets, attributes := fromTree(tree.Root, tree)
-	if err = insertBlocks(tx, blocks); nil != err {
-		return
-	}
-	if err = insertSpans(tx, spans); nil != err {
-		return
-	}
-	if err = insertAssets(tx, assets); nil != err {
-		return
-	}
-	if err = insertAttributes(tx, attributes); nil != err {
-		return
-	}
-	return
-}
-
-func insertRef(tx *sql.Tx, tree *parse.Tree) (err error) {
+func insertRefs(tx *sql.Tx, tree *parse.Tree) (err error) {
 	refs, fileAnnotationRefs := refsFromTree(tree)
-	if err = insertRefs(tx, refs); nil != err {
+	if err = insertBlockRefs(tx, refs); nil != err {
 		return
 	}
 	if err = insertFileAnnotationRefs(tx, fileAnnotationRefs); nil != err {
@@ -407,7 +393,24 @@ func insertRef(tx *sql.Tx, tree *parse.Tree) (err error) {
 	return err
 }
 
-func upsertTree(tx *sql.Tx, tree *parse.Tree) (err error) {
+func indexTree(tx *sql.Tx, box, p string, context map[string]interface{}) (err error) {
+	tree, err := filesys.LoadTree(box, p, luteEngine)
+	if nil != err {
+		return
+	}
+
+	err = insertTree(tx, tree, context)
+	return
+}
+
+func insertTree(tx *sql.Tx, tree *parse.Tree, context map[string]interface{}) (err error) {
+	blocks, spans, assets, attributes := fromTree(tree.Root, tree)
+	refs, fileAnnotationRefs := refsFromTree(tree)
+	err = insertTree0(tx, tree, context, blocks, spans, assets, attributes, refs, fileAnnotationRefs)
+	return
+}
+
+func upsertTree(tx *sql.Tx, tree *parse.Tree, context map[string]interface{}) (err error) {
 	oldBlockHashes := queryBlockHashes(tree.ID)
 	blocks, spans, assets, attributes := fromTree(tree.Root, tree)
 	newBlockHashes := map[string]string{}
@@ -435,7 +438,10 @@ func upsertTree(tx *sql.Tx, tree *parse.Tree) (err error) {
 	for _, b := range blocks {
 		toRemoves = append(toRemoves, b.ID)
 	}
-	deleteBlocksByIDs(tx, toRemoves)
+
+	if err = deleteBlocksByIDs(tx, toRemoves); nil != err {
+		return
+	}
 
 	if err = deleteSpansByPathTx(tx, tree.Box, tree.Path); nil != err {
 		return
@@ -453,36 +459,21 @@ func upsertTree(tx *sql.Tx, tree *parse.Tree) (err error) {
 		return
 	}
 
-	if err = insertBlocks(tx, blocks); nil != err {
+	refs, fileAnnotationRefs := refsFromTree(tree)
+	if err = insertTree0(tx, tree, context, blocks, spans, assets, attributes, refs, fileAnnotationRefs); nil != err {
 		return
 	}
-	anchors := map[string]string{}
-	var refIDs []string
-	for _, block := range blocks {
-		if "" != block.Content {
-			// content 不为空的话说明是定值，不需要解析引用内容
-			continue
-		}
-		subTree := parse.Parse("", []byte(block.Markdown), luteEngine.ParseOptions)
-		if nil == subTree {
-			util.LogErrorf("parse temp block [%s] failed: %s", block.ID, err)
-			continue
-		}
-		if 0 < len(treenode.GetLegacyDynamicBlockRefDefIDs(subTree.Root)) {
-			refIDs = append(refIDs, block.ID)
-		}
-	}
-	// 先删除再插入会快很多
-	refBlocks := GetBlocks(refIDs)
-	for _, refBlock := range refBlocks {
-		blockContent := ResolveRefContent(refBlock, &anchors)
-		refBlock.Content = blockContent
-	}
-	deleteBlocksByIDs(tx, refIDs)
-	insertBlocks(tx, refBlocks)
+	return err
+}
 
-	refs, fileAnnotationRefs := refsFromTree(tree)
-	if err = insertRefs(tx, refs); nil != err {
+func insertTree0(tx *sql.Tx, tree *parse.Tree, context map[string]interface{},
+	blocks []*Block, spans []*Span, assets []*Asset, attributes []*Attribute,
+	refs []*Ref, fileAnnotationRefs []*FileAnnotationRef) (err error) {
+	if err = insertBlocks(tx, blocks, context); nil != err {
+		return
+	}
+
+	if err = insertBlockRefs(tx, refs); nil != err {
 		return
 	}
 	if err = insertFileAnnotationRefs(tx, fileAnnotationRefs); nil != err {
@@ -504,5 +495,5 @@ func upsertTree(tx *sql.Tx, tree *parse.Tree) (err error) {
 	if err = insertAttributes(tx, attributes); nil != err {
 		return
 	}
-	return err
+	return
 }

@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -21,11 +21,14 @@ import (
 )
 
 type System struct {
-	ID            string `json:"id"`
-	KernelVersion string `json:"kernelVersion"`
-	OS            string `json:"os"`
-	Container     string `json:"container"` // docker, android, ios, std
-	IsInsider     bool   `json:"isInsider"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	KernelVersion    string `json:"kernelVersion"`
+	OS               string `json:"os"`
+	OSPlatform       string `json:"osPlatform"`
+	Container        string `json:"container"` // docker, android, ios, std
+	IsMicrosoftStore bool   `json:"isMicrosoftStore"`
+	IsInsider        bool   `json:"isInsider"`
 
 	HomeDir      string `json:"homeDir"`
 	WorkspaceDir string `json:"workspaceDir"`
@@ -33,17 +36,22 @@ type System struct {
 	ConfDir      string `json:"confDir"`
 	DataDir      string `json:"dataDir"`
 
-	NetworkServe bool          `json:"networkServe"`
+	NetworkServe bool          `json:"networkServe"` // 是否开启网络伺服
 	NetworkProxy *NetworkProxy `json:"networkProxy"`
 
-	UploadErrLog bool `json:"uploadErrLog"`
+	UploadErrLog           bool `json:"uploadErrLog"`
+	DisableGoogleAnalytics bool `json:"disableGoogleAnalytics"`
+	DownloadInstallPkg     bool `json:"downloadInstallPkg"`
+	AutoLaunch             bool `json:"autoLaunch"`
 }
 
 func NewSystem() *System {
 	return &System{
-		ID:            util.GetDeviceID(),
-		KernelVersion: util.Ver,
-		NetworkProxy:  &NetworkProxy{},
+		ID:                 util.GetDeviceID(),
+		Name:               util.GetDeviceName(),
+		KernelVersion:      util.Ver,
+		NetworkProxy:       &NetworkProxy{},
+		DownloadInstallPkg: true,
 	}
 }
 

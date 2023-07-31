@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,12 +20,14 @@ import (
 	"time"
 
 	"github.com/88250/lute/ast"
+	"github.com/88250/lute/parse"
 	"github.com/emirpasic/gods/stacks/linkedliststack"
 	"github.com/siyuan-note/siyuan/kernel/treenode"
+	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
 func Outline(rootID string) (ret []*Path, err error) {
-	time.Sleep(512 * time.Millisecond /* 前端队列轮询间隔 */)
+	time.Sleep(util.FrontendQueueInterval)
 	WaitForWritingFiles()
 
 	ret = []*Path{}
@@ -34,13 +36,18 @@ func Outline(rootID string) (ret []*Path, err error) {
 		return
 	}
 
+	ret = outline(tree)
+	return
+}
+
+func outline(tree *parse.Tree) (ret []*Path) {
 	luteEngine := NewLute()
 	var headings []*Block
 	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
 		if entering && ast.NodeHeading == n.Type && !n.ParentIs(ast.NodeBlockquote) {
 			n.Box, n.Path = tree.Box, tree.Path
 			block := &Block{
-				RootID:  rootID,
+				RootID:  tree.Root.ID,
 				Depth:   n.HeadingLevel,
 				Box:     n.Box,
 				Path:    n.Path,
@@ -81,7 +88,7 @@ func Outline(rootID string) (ret []*Path, err error) {
 		}
 	}
 
-	ret = toFlatTree(blocks, 0, "outline")
+	ret = toFlatTree(blocks, 0, "outline", tree)
 	if 0 < len(ret) {
 		children := ret[0].Blocks
 		ret = nil

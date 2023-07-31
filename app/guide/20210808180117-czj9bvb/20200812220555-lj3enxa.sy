@@ -1,5 +1,6 @@
 {
 	"ID": "20200812220555-lj3enxa",
+	"Spec": "1",
 	"Type": "NodeDocument",
 	"Properties": {
 		"icon": "1f389",
@@ -7,7 +8,7 @@
 		"title": "请从这里开始",
 		"title-img": "background-color:#556;background-image: linear-gradient(30deg, #445 12%, transparent 12.5%, transparent 87%, #445 87.5%, #445),linear-gradient(150deg, #445 12%, transparent 12.5%, transparent 87%, #445 87.5%, #445),linear-gradient(30deg, #445 12%, transparent 12.5%, transparent 87%, #445 87.5%, #445),linear-gradient(150deg, #445 12%, transparent 12.5%, transparent 87%, #445 87.5%, #445),linear-gradient(60deg, #99a 25%, transparent 25.5%, transparent 75%, #99a 75%, #99a),linear-gradient(60deg, #99a 25%, transparent 25.5%, transparent 75%, #99a 75%, #99a);background-size:80px 140px;background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;",
 		"type": "doc",
-		"updated": "20220426104415"
+		"updated": "20230428165309"
 	},
 	"Children": [
 		{
@@ -32,41 +33,44 @@
 			"Properties": {
 				"id": "20210428212840-8rqwn5o",
 				"style": "color: var(--b3-card-info-color); background-color: var(--b3-card-info-background);",
-				"updated": "20210622232119"
+				"updated": "20230415112508"
 			},
 			"Children": [
 				{
 					"Type": "NodeText",
-					"Data": "在思源中，唯一重要的核心概念是"
+					"Data": "在"
 				},
 				{
-					"Type": "NodeBlockRef",
-					"Data": "span",
-					"Children": [
-						{
-							"Type": "NodeOpenParen"
-						},
-						{
-							"Type": "NodeOpenParen"
-						},
-						{
-							"Type": "NodeBlockRefID",
-							"Data": "20200813004931-q4cu8na"
-						},
-						{
-							"Type": "NodeBlockRefSpace"
-						},
-						{
-							"Type": "NodeBlockRefText",
-							"Data": "内容块"
-						},
-						{
-							"Type": "NodeCloseParen"
-						},
-						{
-							"Type": "NodeCloseParen"
-						}
-					]
+					"Type": "NodeTextMark",
+					"Properties": {
+						"parent-style": "color: var(--b3-card-info-color); background-color: var(--b3-card-info-background);"
+					},
+					"TextMarkType": "block-ref",
+					"TextMarkBlockRefID": "20230415111858-vgohvf3",
+					"TextMarkBlockRefSubtype": "s",
+					"TextMarkTextContent": "思源"
+				},
+				{
+					"Type": "NodeKramdownSpanIAL",
+					"Data": "{: parent-style=\"color: var(--b3-card-info-color); background-color: var(--b3-card-info-background);\"}"
+				},
+				{
+					"Type": "NodeText",
+					"Data": "中，唯一重要的核心概念是"
+				},
+				{
+					"Type": "NodeTextMark",
+					"Properties": {
+						"parent-style": "color: var(--b3-card-info-color); background-color: var(--b3-card-info-background);"
+					},
+					"TextMarkType": "block-ref",
+					"TextMarkBlockRefID": "20200813004931-q4cu8na",
+					"TextMarkBlockRefSubtype": "s",
+					"TextMarkTextContent": "内容块"
+				},
+				{
+					"Type": "NodeKramdownSpanIAL",
+					"Data": "{: parent-style=\"color: var(--b3-card-info-color); background-color: var(--b3-card-info-background);\"}"
 				},
 				{
 					"Type": "NodeText",
@@ -79,7 +83,7 @@
 			"Type": "NodeSuperBlock",
 			"Properties": {
 				"id": "20210528115012-vst5lwt",
-				"updated": "20210502233951"
+				"updated": "20230428165309"
 			},
 			"Children": [
 				{
@@ -94,8 +98,7 @@
 					"Type": "NodeSuperBlock",
 					"Properties": {
 						"id": "20210528115021-oj6gzg7",
-						"style": "width: 70%; flex: 0 0 auto;",
-						"updated": "20210502233951"
+						"updated": "20230428165309"
 					},
 					"Children": [
 						{
@@ -126,7 +129,7 @@
 							"ListData": {},
 							"Properties": {
 								"id": "20201225220955-l154bn4",
-								"updated": "20210502233951"
+								"updated": "20230428165309"
 							},
 							"Children": [
 								{
@@ -165,7 +168,7 @@
 									},
 									"Properties": {
 										"id": "20201225220955-uwhqnug",
-										"updated": "20211205193639"
+										"updated": "20230428165309"
 									},
 									"Children": [
 										{
@@ -173,7 +176,7 @@
 											"Type": "NodeParagraph",
 											"Properties": {
 												"id": "20210131155408-btnfw88",
-												"updated": "20211205193639"
+												"updated": "20230428165309"
 											},
 											"Children": [
 												{
@@ -181,24 +184,13 @@
 													"Data": "在编辑器中输入 "
 												},
 												{
-													"Type": "NodeKbd",
-													"Data": "kbd",
-													"Children": [
-														{
-															"Type": "NodeKbdOpenMarker"
-														},
-														{
-															"Type": "NodeText",
-															"Data": "/"
-														},
-														{
-															"Type": "NodeKbdCloseMarker"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "kbd",
+													"TextMarkTextContent": "/"
 												},
 												{
 													"Type": "NodeText",
-													"Data": " 触发功能菜单"
+													"Data": "​ 触发功能菜单"
 												}
 											]
 										}
@@ -225,66 +217,22 @@
 											},
 											"Children": [
 												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20200813131152-0wk5akh"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "在内容块中遨游"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "block-ref",
+													"TextMarkBlockRefID": "20200813131152-0wk5akh",
+													"TextMarkBlockRefSubtype": "s",
+													"TextMarkTextContent": "在内容块中遨游"
 												},
 												{
 													"Type": "NodeText",
 													"Data": "、"
 												},
 												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20200822191536-rm6hwid"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "窗口和页签"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "block-ref",
+													"TextMarkBlockRefID": "20200822191536-rm6hwid",
+													"TextMarkBlockRefSubtype": "s",
+													"TextMarkTextContent": "窗口和页签"
 												}
 											]
 										}
@@ -302,7 +250,7 @@
 					"Type": "NodeSuperBlock",
 					"Properties": {
 						"id": "20210528115016-kgyy5mm",
-						"updated": "20211223213134"
+						"updated": "20210528115049"
 					},
 					"Children": [
 						{
@@ -333,7 +281,7 @@
 							"ListData": {},
 							"Properties": {
 								"id": "20201225220955-5tzog8p",
-								"updated": "20211223213134"
+								"updated": "20210528115049"
 							},
 							"Children": [
 								{
@@ -357,33 +305,11 @@
 											},
 											"Children": [
 												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20200813093015-u6bopdt"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "常见问题"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "block-ref",
+													"TextMarkBlockRefID": "20200813093015-u6bopdt",
+													"TextMarkBlockRefSubtype": "s",
+													"TextMarkTextContent": "常见问题"
 												}
 											]
 										}
@@ -409,30 +335,10 @@
 											},
 											"Children": [
 												{
-													"Type": "NodeLink",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenBracket"
-														},
-														{
-															"Type": "NodeLinkText",
-															"Data": "缘起"
-														},
-														{
-															"Type": "NodeCloseBracket"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeLinkDest",
-															"Data": "https://ld246.com/article/1619868273581"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "a",
+													"TextMarkAHref": "https://ld246.com/article/1619868273581",
+													"TextMarkTextContent": "缘起"
 												}
 											]
 										}
@@ -459,30 +365,10 @@
 											},
 											"Children": [
 												{
-													"Type": "NodeLink",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenBracket"
-														},
-														{
-															"Type": "NodeLinkText",
-															"Data": "路线图"
-														},
-														{
-															"Type": "NodeCloseBracket"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeLinkDest",
-															"Data": "https://github.com/siyuan-note/siyuan/projects"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "a",
+													"TextMarkAHref": "https://github.com/orgs/siyuan-note/projects/1",
+													"TextMarkTextContent": "路线图"
 												}
 											]
 										}
@@ -505,7 +391,7 @@
 			"Type": "NodeSuperBlock",
 			"Properties": {
 				"id": "20210528115259-ifi35e9",
-				"updated": "20220426104415"
+				"updated": "20210601234211"
 			},
 			"Children": [
 				{
@@ -520,8 +406,7 @@
 					"Type": "NodeSuperBlock",
 					"Properties": {
 						"id": "20210528115306-kftajae",
-						"style": "width: 70%; flex: 0 0 auto;",
-						"updated": "20220426104415"
+						"updated": "20210601234211"
 					},
 					"Children": [
 						{
@@ -553,7 +438,7 @@
 							"ListData": {},
 							"Properties": {
 								"id": "20210428231856-0ej7uyw",
-								"updated": "20220426104415"
+								"updated": "20210601234211"
 							},
 							"Children": [
 								{
@@ -577,80 +462,10 @@
 											},
 											"Children": [
 												{
-													"Type": "NodeLink",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenBracket"
-														},
-														{
-															"Type": "NodeLinkText",
-															"Data": "链滴（中文讨论区）"
-														},
-														{
-															"Type": "NodeCloseBracket"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeLinkDest",
-															"Data": "https://ld246.com/domain/siyuan"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
-												}
-											]
-										}
-									]
-								},
-								{
-									"ID": "20211223213307-l2nf86a",
-									"Type": "NodeListItem",
-									"ListData": {
-										"BulletChar": 42,
-										"Marker": "Kg=="
-									},
-									"Properties": {
-										"id": "20211223213307-l2nf86a",
-										"updated": "20211223213352"
-									},
-									"Children": [
-										{
-											"ID": "20211223213307-a4gzm9a",
-											"Type": "NodeParagraph",
-											"Properties": {
-												"id": "20211223213307-a4gzm9a",
-												"updated": "20211223213352"
-											},
-											"Children": [
-												{
-													"Type": "NodeLink",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenBracket"
-														},
-														{
-															"Type": "NodeLinkText",
-															"Data": "QQ 频道"
-														},
-														{
-															"Type": "NodeCloseBracket"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeLinkDest",
-															"Data": "https://qun.qq.com/qqweb/qunpro/share?_wv=3\u0026_wwv=128\u0026inviteCode=EGKPc\u0026from=246610\u0026biz=ka"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "a",
+													"TextMarkAHref": "https://ld246.com/article/1649901726096",
+													"TextMarkTextContent": "链滴（中文反馈）"
 												}
 											]
 										}
@@ -677,30 +492,10 @@
 											},
 											"Children": [
 												{
-													"Type": "NodeLink",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenBracket"
-														},
-														{
-															"Type": "NodeLinkText",
-															"Data": "用户社区汇总"
-														},
-														{
-															"Type": "NodeCloseBracket"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeLinkDest",
-															"Data": "https://ld246.com/article/1640266171309"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "a",
+													"TextMarkAHref": "https://ld246.com/article/1640266171309",
+													"TextMarkTextContent": "用户社区汇总"
 												}
 											]
 										}
@@ -718,7 +513,7 @@
 					"Type": "NodeSuperBlock",
 					"Properties": {
 						"id": "20210528115302-oa09t9p",
-						"updated": "20211222095347"
+						"updated": "20221114173007"
 					},
 					"Children": [
 						{
@@ -749,7 +544,7 @@
 							"ListData": {},
 							"Properties": {
 								"id": "20210131160231-t1cr21p",
-								"updated": "20211222095347"
+								"updated": "20221114173007"
 							},
 							"Children": [
 								{
@@ -761,7 +556,7 @@
 									},
 									"Properties": {
 										"id": "20210528115247-pxy2333",
-										"updated": "20210528115747"
+										"updated": "20221114172952"
 									},
 									"Children": [
 										{
@@ -769,196 +564,45 @@
 											"Type": "NodeParagraph",
 											"Properties": {
 												"id": "20210528115247-ri8160o",
-												"updated": "20210528115747"
+												"updated": "20221114172952"
 											},
 											"Children": [
 												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20201225212401-ru1scjs"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "上架主题集市"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "block-ref",
+													"TextMarkBlockRefID": "20211129190023-eezo4zh",
+													"TextMarkBlockRefSubtype": "s",
+													"TextMarkTextContent": "思源笔记完全开源"
 												}
 											]
 										}
 									]
 								},
 								{
-									"ID": "20210528115249-ew4v4on",
+									"ID": "20221114172803-v3e5sfh",
 									"Type": "NodeListItem",
 									"ListData": {
 										"BulletChar": 42,
 										"Marker": "Kg=="
 									},
 									"Properties": {
-										"id": "20210528115249-ew4v4on",
-										"updated": "20210528115249"
+										"id": "20221114172803-v3e5sfh",
+										"updated": "20221114173007"
 									},
 									"Children": [
 										{
-											"ID": "20210528115249-bt789cl",
+											"ID": "20221114172803-vqryeav",
 											"Type": "NodeParagraph",
 											"Properties": {
-												"id": "20210528115249-bt789cl",
-												"updated": "20210528115249"
+												"id": "20221114172803-vqryeav",
+												"updated": "20221114173007"
 											},
 											"Children": [
 												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20210131162925-p51ey8q"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "上架模板集市"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
-												}
-											]
-										}
-									]
-								},
-								{
-									"ID": "20210131161246-vvdpt72",
-									"Type": "NodeListItem",
-									"ListData": {
-										"BulletChar": 42,
-										"Marker": "Kg=="
-									},
-									"Properties": {
-										"id": "20210131161246-vvdpt72",
-										"updated": "20220421001904"
-									},
-									"Children": [
-										{
-											"ID": "20210131161246-8ypw9dy",
-											"Type": "NodeParagraph",
-											"Properties": {
-												"id": "20210131161246-8ypw9dy",
-												"updated": "20220421001904"
-											},
-											"Children": [
-												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20210601103242-euz4eih"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "上架图标集市"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
-												}
-											]
-										}
-									]
-								},
-								{
-									"ID": "20210131160231-vnk80qa",
-									"Type": "NodeListItem",
-									"ListData": {
-										"BulletChar": 42,
-										"Marker": "Kg=="
-									},
-									"Properties": {
-										"id": "20210131160231-vnk80qa",
-										"updated": "20211222095347"
-									},
-									"Children": [
-										{
-											"ID": "20210131160231-fgee9v3",
-											"Type": "NodeParagraph",
-											"Properties": {
-												"id": "20210131160231-fgee9v3",
-												"updated": "20211222095347"
-											},
-											"Children": [
-												{
-													"Type": "NodeBlockRef",
-													"Data": "span",
-													"Children": [
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeOpenParen"
-														},
-														{
-															"Type": "NodeBlockRefID",
-															"Data": "20211222095016-3jjm95h"
-														},
-														{
-															"Type": "NodeBlockRefSpace"
-														},
-														{
-															"Type": "NodeBlockRefText",
-															"Data": "上架挂件集市"
-														},
-														{
-															"Type": "NodeCloseParen"
-														},
-														{
-															"Type": "NodeCloseParen"
-														}
-													]
+													"Type": "NodeTextMark",
+													"TextMarkType": "a",
+													"TextMarkAHref": "https://github.com/siyuan-note/bazaar",
+													"TextMarkTextContent": "社区集市"
 												}
 											]
 										}
@@ -973,6 +617,45 @@
 				},
 				{
 					"Type": "NodeSuperBlockCloseMarker"
+				}
+			]
+		},
+		{
+			"ID": "20221114172820-dvkx6pq",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20221114172820-dvkx6pq",
+				"updated": "20230428155245"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "如果你感到官方用户指南过于硬核，请尝试从"
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "block-ref",
+					"TextMarkBlockRefID": "20230428153709-hioyy5l",
+					"TextMarkBlockRefSubtype": "s",
+					"TextMarkTextContent": "社区资源"
+				},
+				{
+					"Type": "NodeText",
+					"Data": "开始。"
+				}
+			]
+		},
+		{
+			"ID": "20230428155440-s8hzxrz",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20230428155440-s8hzxrz",
+				"updated": "20230428162620"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "我们希望在接下来的时间里，思源能够成为你生活和学习的效率工具，帮助你实现更多的目标和计划🙏"
 				}
 			]
 		}

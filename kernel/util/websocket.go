@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,9 +18,11 @@ package util
 
 import (
 	"sync"
+	"time"
 
 	"github.com/88250/gulu"
-	"github.com/88250/melody"
+	"github.com/olahol/melody"
+	"github.com/siyuan-note/eventbus"
 )
 
 var (
@@ -118,9 +120,12 @@ func ClosePushChan(id string) {
 	})
 }
 
+func ReloadUIResetScroll() {
+	BroadcastByType("main", "reloadui", 0, "", map[string]interface{}{"resetScroll": true})
+}
+
 func ReloadUI() {
-	evt := NewCmdResult("reloadui", 0, PushModeBroadcast, 0)
-	PushEvent(evt)
+	BroadcastByType("main", "reloadui", 0, "", nil)
 }
 
 func PushTxErr(msg string, code int, data interface{}) {
@@ -144,11 +149,45 @@ func PushErrMsg(msg string, timeout int) (msgId string) {
 	return
 }
 
+func PushStatusBar(msg string) {
+	msg += " (" + time.Now().Format("2006-01-02 15:04:05") + ")"
+	BroadcastByType("main", "statusbar", 0, msg, nil)
+}
+
+func PushBackgroundTask(data map[string]interface{}) {
+	BroadcastByType("main", "backgroundtask", 0, "", data)
+}
+
+type BlockStatResult struct {
+	RuneCount  int `json:"runeCount"`
+	WordCount  int `json:"wordCount"`
+	LinkCount  int `json:"linkCount"`
+	ImageCount int `json:"imageCount"`
+	RefCount   int `json:"refCount"`
+}
+
+func ContextPushMsg(context map[string]interface{}, msg string) {
+	switch context[eventbus.CtxPushMsg].(int) {
+	case eventbus.CtxPushMsgToProgress:
+		PushEndlessProgress(msg)
+	case eventbus.CtxPushMsgToStatusBar:
+		PushStatusBar(msg)
+	case eventbus.CtxPushMsgToStatusBarAndProgress:
+		PushStatusBar(msg)
+		PushEndlessProgress(msg)
+	}
+}
+
 const (
 	PushProgressCodeProgressed = 0 // 有进度
 	PushProgressCodeEndless    = 1 // 无进度
 	PushProgressCodeEnd        = 2 // 关闭进度
 )
+
+func PushClearAllMsg() {
+	ClearPushProgress(100)
+	PushClearMsg("")
+}
 
 func ClearPushProgress(total int) {
 	PushProgress(PushProgressCodeEnd, total, total, "")
@@ -175,8 +214,16 @@ func PushClearProgress() {
 	BroadcastByType("main", "cprogress", 0, "", nil)
 }
 
+func PushProtyleReload(rootID string) {
+	BroadcastByType("protyle", "reload", 0, "", rootID)
+}
+
+func PushProtyleLoading(rootID, msg string) {
+	BroadcastByType("protyle", "addLoading", 0, msg, rootID)
+}
+
 func PushDownloadProgress(id string, percent float32) {
-	evt := NewCmdResult("downloadProgress", 0, PushModeBroadcast, 0)
+	evt := NewCmdResult("downloadProgress", 0, PushModeBroadcast)
 	evt.Data = map[string]interface{}{
 		"id":      id,
 		"percent": percent,
@@ -187,9 +234,6 @@ func PushDownloadProgress(id string, percent float32) {
 func PushEvent(event *Result) {
 	msg := event.Bytes()
 	mode := event.PushMode
-	if "reload" == event.Cmd {
-		mode = event.ReloadPushMode
-	}
 	switch mode {
 	case PushModeBroadcast:
 		Broadcast(msg)
@@ -199,7 +243,10 @@ func PushEvent(event *Result) {
 		broadcastOthers(msg, event.SessionId)
 	case PushModeBroadcastExcludeSelfApp:
 		broadcastOtherApps(msg, event.AppId)
-	case PushModeNone:
+	case PushModeBroadcastApp:
+		broadcastApp(msg, event.AppId)
+	case PushModeBroadcastMainExcludeSelfApp:
+		broadcastOtherAppMains(msg, event.AppId)
 	}
 }
 
@@ -239,6 +286,41 @@ func broadcastOtherApps(msg []byte, excludeApp string) {
 		appSessions.Range(func(key, value interface{}) bool {
 			session := value.(*melody.Session)
 			if app, _ := session.Get("app"); app == excludeApp {
+				return true
+			}
+			session.Write(msg)
+			return true
+		})
+		return true
+	})
+}
+
+func broadcastOtherAppMains(msg []byte, excludeApp string) {
+	sessions.Range(func(key, value interface{}) bool {
+		appSessions := value.(*sync.Map)
+		appSessions.Range(func(key, value interface{}) bool {
+			session := value.(*melody.Session)
+			if app, _ := session.Get("app"); app == excludeApp {
+				return true
+			}
+
+			if t, ok := session.Get("type"); ok && "main" != t {
+				return true
+			}
+
+			session.Write(msg)
+			return true
+		})
+		return true
+	})
+}
+
+func broadcastApp(msg []byte, app string) {
+	sessions.Range(func(key, value interface{}) bool {
+		appSessions := value.(*sync.Map)
+		appSessions.Range(func(key, value interface{}) bool {
+			session := value.(*melody.Session)
+			if sessionApp, _ := session.Get("app"); sessionApp != app {
 				return true
 			}
 			session.Write(msg)

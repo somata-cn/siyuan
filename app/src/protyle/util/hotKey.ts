@@ -1,59 +1,92 @@
 import {isCtrl} from "./compatibility";
 import {Constants} from "../../constants";
 
-// 是否匹配 ⇧⌘[] / ⌘[] / ⌥[] / ⌥⌘[] / ⇧Tab / []
+// 是否匹配 ⇧⌘[] / ⌘[] / ⌥[] / ⌥⌘[] / ⌥⇧[] / ⌥⇧⌘[] / ⇧[] / []
 export const matchHotKey = (hotKey: string, event: KeyboardEvent) => {
-    if (hotKey === "") {
+    if (!hotKey) {
         return false;
     }
 
     // []
     if (hotKey.indexOf("⇧") === -1 && hotKey.indexOf("⌘") === -1 && hotKey.indexOf("⌥") === -1 && hotKey.indexOf("⌃") === -1) {
-        if (hotKey === "⇥") {
-            hotKey = "Tab";
-        }
-        if (!event.ctrlKey && !isCtrl(event) && !event.altKey && !event.shiftKey && event.code === hotKey) {
+        if (!event.ctrlKey && !isCtrl(event) && !event.altKey && !event.shiftKey && hotKey === Constants.KEYCODELIST[event.keyCode]) {
             return true;
         }
         return false;
     }
 
-    const hotKeys = hotKey.replace("Enter", Constants.ZWSP).split("");
-    if (hotKey.endsWith("↑") || hotKey.endsWith("↓") || hotKey.endsWith("→") || hotKey.endsWith("←") || hotKey.endsWith("Enter") || hotKey.endsWith("⇥")) {
+    const hotKeys = hotKey.split("");
+    if (hotKey.indexOf("F") > -1) {
         hotKeys.forEach((item, index) => {
-            if (item === "↑") {
-                hotKeys[index] = "ArrowUp";
-            } else if (item === "↓") {
-                hotKeys[index] = "ArrowDown";
-            } else if (item === "←") {
-                hotKeys[index] = "ArrowLeft";
-            } else if (item === "→") {
-                hotKeys[index] = "ArrowRight";
-            } else if (item === "⇥") {
-                hotKeys[index] = "Tab";
-            } else if (item === Constants.ZWSP) {
-                hotKeys[index] = "Enter";
+            if (item === "F") {
+                // F1-F12
+                hotKeys[index] = "F" + hotKeys.splice(index + 1, 1);
+                if (hotKeys[index + 1]) {
+                    hotKeys[index + 1] += hotKeys.splice(index + 1, 1);
+                }
             }
         });
     }
 
-    // 是否匹配 ⇧Tab/↑
+    // 是否匹配 ⇧[]
     if (hotKey.startsWith("⇧") && hotKeys.length === 2) {
-        if (!event.ctrlKey && !isCtrl(event) && !event.altKey && event.shiftKey && event.key === hotKeys[1]) {
+        if (!event.ctrlKey && !isCtrl(event) && !event.altKey && event.shiftKey && hotKeys[1] === Constants.KEYCODELIST[event.keyCode]) {
             return true;
         }
         return false;
     }
 
     if (hotKey.startsWith("⌥")) {
+        let keyCode = hotKeys.length === 3 ? hotKeys[2] : hotKeys[1];
+        if (hotKeys.length === 4) {
+            keyCode = hotKeys[3];
+        }
+
+        const isMatchKey = keyCode === Constants.KEYCODELIST[event.keyCode];
         // 是否匹配 ⌥[] / ⌥⌘[]
-        const keyCode = hotKeys.length === 3 ? hotKeys[2] : hotKeys[1];
-        if ((hotKeys.length === 3 ? isCtrl(event) : !isCtrl(event)) && event.altKey && !event.shiftKey &&
-            (
-                event.code === (/^[0-9]$/.test(keyCode) ? "Digit" : "Key") + keyCode || event.code === keyCode ||
-                (event.code === "Period" && keyCode === ".") ||
-                (event.code === "BracketLeft" && keyCode === "[") || (event.code === "BracketRight" && keyCode === "]")
-            )) {
+        if (isMatchKey && event.altKey && !event.shiftKey &&
+            (hotKeys.length === 3 ? (isCtrl(event) && hotKey.startsWith("⌥⌘")) : !isCtrl(event))) {
+            return true;
+        }
+        // ⌥⇧⌘[]
+        if (isMatchKey && hotKey.startsWith("⌥⇧⌘") && hotKeys.length === 4 &&
+            event.altKey && event.shiftKey && isCtrl(event)) {
+            return true;
+        }
+        // ⌥⇧[]
+        if (isMatchKey && hotKey.startsWith("⌥⇧") && hotKeys.length === 3 &&
+            event.altKey && event.shiftKey && !isCtrl(event)) {
+            return true;
+        }
+        return false;
+    }
+
+    // 是否匹配 ⌃[] / ⌃⌥[] / ⌃⇧[]/ ⌃⌥⇧[]
+    if (hotKey.startsWith("⌃")) {
+        let keyCode = hotKeys.length === 3 ? hotKeys[2] : hotKeys[1];
+        if (hotKeys.length === 4) {
+            keyCode = hotKeys[3];
+        }
+
+        const isMatchKey = keyCode === Constants.KEYCODELIST[event.keyCode];
+        // 是否匹配 ⌃[]
+        if (isMatchKey && hotKeys.length === 2 &&
+            event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) {
+            return true;
+        }
+        // ⌃⇧[]
+        if (isMatchKey && hotKey.startsWith("⌃⇧") && hotKeys.length === 3 &&
+            event.ctrlKey && !event.altKey && event.shiftKey && !event.metaKey) {
+            return true;
+        }
+        // ⌃⌥[]
+        if (isMatchKey && hotKey.startsWith("⌃⌥") && hotKeys.length === 3 &&
+            event.ctrlKey && event.altKey && !event.shiftKey && !event.metaKey) {
+            return true;
+        }
+        // ⌃⌥⇧[]
+        if (isMatchKey && hotKey.startsWith("⌃⌥⇧") && hotKeys.length === 4 &&
+            event.ctrlKey && event.altKey && event.shiftKey && !event.metaKey) {
             return true;
         }
         return false;
@@ -61,19 +94,8 @@ export const matchHotKey = (hotKey: string, event: KeyboardEvent) => {
 
     // 是否匹配 ⇧⌘[] / ⌘[]
     const hasShift = hotKeys.length > 2 && (hotKeys[0] === "⇧");
-    let key = (hasShift ? hotKeys[2] : hotKeys[1]);
-    if (hasShift && !/Mac/.test(navigator.platform)) {
-        if (key === "-") {
-            key = "_";
-        } else if (key === "=") {
-            key = "+";
-        } else if (key === ".") {
-            key = ">";
-        }
-    }
-    if (isCtrl(event) && event.key.toLowerCase() === key.toLowerCase() && !event.altKey
-        && ((!hasShift && !event.shiftKey) || (hasShift && event.shiftKey))) {
-        return true;
+    if (isCtrl(event) && !event.altKey && ((!hasShift && !event.shiftKey) || (hasShift && event.shiftKey))) {
+        return (hasShift ? hotKeys[2] : hotKeys[1]) === Constants.KEYCODELIST[event.keyCode];
     }
     return false;
 };

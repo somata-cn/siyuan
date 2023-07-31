@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,11 @@ func netImg2LocalAssets(c *gin.Context) {
 	}
 
 	id := arg["id"].(string)
-	err := model.NetImg2LocalAssets(id)
+	var url string
+	if urlArg := arg["url"]; nil != urlArg {
+		url = urlArg.(string)
+	}
+	err := model.NetImg2LocalAssets(id, url)
 	if nil != err {
 		ret.Code = -1
 		ret.Msg = err.Error()

@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -23,27 +23,27 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
-	"unicode/utf8"
 
+	"github.com/88250/gulu"
 	"github.com/88250/lute/ast"
 	"github.com/88250/lute/parse"
 	"github.com/88250/lute/render"
-	"github.com/88250/protyle"
-	"github.com/araddon/dateparse"
-	"github.com/siyuan-note/siyuan/kernel/treenode"
-	"github.com/siyuan-note/siyuan/kernel/util"
-
-	"github.com/88250/gulu"
 	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/araddon/dateparse"
+	"github.com/siyuan-note/filelock"
+	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/search"
 	"github.com/siyuan-note/siyuan/kernel/sql"
+	"github.com/siyuan-note/siyuan/kernel/treenode"
+	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
-func RenderCreateDocNameTemplate(nameTemplate string) (ret string, err error) {
-	tpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(nameTemplate)
+func RenderGoTemplate(templateContent string) (ret string, err error) {
+	tpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(templateContent)
 	if nil != err {
 		return "", errors.New(fmt.Sprintf(Conf.Language(44), err.Error()))
 	}
@@ -58,82 +58,100 @@ func RenderCreateDocNameTemplate(nameTemplate string) (ret string, err error) {
 	return
 }
 
-func SearchTemplate(keyword string) (ret []*Block) {
-	templates := filepath.Join(util.DataDir, "templates")
-	k := strings.ToLower(keyword)
-	filepath.Walk(templates, func(path string, info fs.FileInfo, err error) error {
-		name := strings.ToLower(info.Name())
-		if !strings.HasSuffix(name, ".md") {
-			return nil
-		}
-
-		if strings.HasPrefix(name, ".") || "readme.md" == name {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if strings.Contains(name, k) {
-			content := strings.TrimPrefix(path, templates)
-			content = strings.ReplaceAll(content, "templates"+string(os.PathSeparator), "")
-			content = strings.TrimSuffix(content, ".md")
-			content = filepath.ToSlash(content)
-			content = content[1:]
-			_, content = search.MarkText(content, keyword, 32, Conf.Search.CaseSensitive)
-			b := &Block{Path: path, Content: content}
-			ret = append(ret, b)
-		}
-		return nil
-	})
+func RemoveTemplate(p string) (err error) {
+	err = filelock.Remove(p)
+	if nil != err {
+		logging.LogErrorf("remove template failed: %s", err)
+	}
 	return
 }
 
-func DocSaveAsTemplate(id string, overwrite bool) (code int, err error) {
-	tree, err := loadTreeByBlockID(id)
-	if nil != err {
+func SearchTemplate(keyword string) (ret []*Block) {
+	ret = []*Block{}
+
+	templates := filepath.Join(util.DataDir, "templates")
+	if !util.IsPathRegularDirOrSymlinkDir(templates) {
 		return
 	}
 
-	var blocks []*ast.Node
-	// 添加 block ial，后面格式化渲染需要
-	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
-		if !entering || !n.IsBlock() {
-			return ast.WalkContinue
-		}
-
-		if ast.NodeBlockQueryEmbed == n.Type {
-			if script := n.ChildByType(ast.NodeBlockQueryEmbedScript); nil != script {
-				script.Tokens = bytes.ReplaceAll(script.Tokens, []byte("\n"), []byte(" "))
-			}
-		} else if ast.NodeHTMLBlock == n.Type {
-			n.Tokens = bytes.TrimSpace(n.Tokens)
-			// 使用 <div> 包裹，否则后续解析模板时会识别为行级 HTML https://github.com/siyuan-note/siyuan/issues/4244
-			if !bytes.HasPrefix(n.Tokens, []byte("<div>")) {
-				n.Tokens = append([]byte("<div>\n"), n.Tokens...)
-			}
-			if !bytes.HasSuffix(n.Tokens, []byte("</div>")) {
-				n.Tokens = append(n.Tokens, []byte("\n</div>")...)
-			}
-		}
-
-		n.RemoveIALAttr("updated")
-		if 0 < len(n.KramdownIAL) {
-			blocks = append(blocks, n)
-		}
-		return ast.WalkContinue
-	})
-	for _, block := range blocks {
-		block.InsertAfter(&ast.Node{Type: ast.NodeKramdownBlockIAL, Tokens: parse.IAL2Tokens(block.KramdownIAL)})
+	groups, err := os.ReadDir(templates)
+	if nil != err {
+		logging.LogErrorf("read templates failed: %s", err)
+		return
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return util.PinYinCompare(filepath.Base(groups[i].Name()), filepath.Base(groups[j].Name()))
+	})
+
+	k := strings.ToLower(keyword)
+	for _, group := range groups {
+		if strings.HasPrefix(group.Name(), ".") {
+			continue
+		}
+
+		if group.IsDir() {
+			var templateBlocks []*Block
+			templateDir := filepath.Join(templates, group.Name())
+			// filepath.Walk 与 filepath.WalkDir 均不支持跟踪符号链接
+			filepath.WalkDir(templateDir, func(path string, entry fs.DirEntry, err error) error {
+				name := strings.ToLower(entry.Name())
+				if strings.HasPrefix(name, ".") {
+					if entry.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+
+				if !strings.HasSuffix(name, ".md") || strings.HasPrefix(name, "readme") || !strings.Contains(name, k) {
+					return nil
+				}
+
+				content := strings.TrimPrefix(path, templates)
+				content = strings.TrimSuffix(content, ".md")
+				content = filepath.ToSlash(content)
+				content = strings.TrimPrefix(content, "/")
+				_, content = search.MarkText(content, keyword, 32, Conf.Search.CaseSensitive)
+				b := &Block{Path: path, Content: content}
+				templateBlocks = append(templateBlocks, b)
+				return nil
+			})
+			sort.Slice(templateBlocks, func(i, j int) bool {
+				return util.PinYinCompare(filepath.Base(templateBlocks[i].Path), filepath.Base(templateBlocks[j].Path))
+			})
+			ret = append(ret, templateBlocks...)
+		} else {
+			name := strings.ToLower(group.Name())
+			if strings.HasPrefix(name, ".") || !strings.HasSuffix(name, ".md") || "readme.md" == name || !strings.Contains(name, k) {
+				continue
+			}
+
+			content := group.Name()
+			content = strings.TrimSuffix(content, ".md")
+			content = filepath.ToSlash(content)
+			_, content = search.MarkText(content, keyword, 32, Conf.Search.CaseSensitive)
+			b := &Block{Path: filepath.Join(templates, group.Name()), Content: content}
+			ret = append(ret, b)
+		}
+	}
+	return
+}
+
+func DocSaveAsTemplate(id, name string, overwrite bool) (code int, err error) {
+	bt := treenode.GetBlockTree(id)
+	if nil == bt {
+		return
+	}
+
+	tree := prepareExportTree(bt)
+	addBlockIALNodes(tree, true)
 
 	luteEngine := NewLute()
 	formatRenderer := render.NewFormatRenderer(tree, luteEngine.RenderOptions)
 	md := formatRenderer.Render()
-	title := tree.Root.IALAttr("title")
-	title = util.FilterFileName(title)
-	title += ".md"
-	savePath := filepath.Join(util.DataDir, "templates", title)
+	name = util.FilterFileName(name) + ".md"
+	name = util.TruncateLenFileName(name)
+	savePath := filepath.Join(util.DataDir, "templates", name)
 	if gulu.File.IsExist(savePath) {
 		if !overwrite {
 			code = 1
@@ -141,7 +159,7 @@ func DocSaveAsTemplate(id string, overwrite bool) (code int, err error) {
 		}
 	}
 
-	err = os.WriteFile(savePath, md, 0644)
+	err = filelock.WriteFile(savePath, md)
 	return
 }
 
@@ -183,7 +201,7 @@ func renderTemplate(p, id string) (string, error) {
 		for _, arg := range args {
 			stmt = strings.Replace(stmt, "?", arg, 1)
 		}
-		ret = sql.SelectBlocksRawStmt(stmt, Conf.Search.Limit)
+		ret = sql.SelectBlocksRawStmt(stmt, 1, Conf.Search.Limit)
 		return
 	}
 	funcMap["querySpans"] = func(stmt string, args ...string) (ret []*sql.Span) {
@@ -197,7 +215,7 @@ func renderTemplate(p, id string) (string, error) {
 		now := time.Now()
 		ret, err := dateparse.ParseIn(dateStr, now.Location())
 		if nil != err {
-			util.LogWarnf("parse date [%s] failed [%s], return current time instead", dateStr, err)
+			logging.LogWarnf("parse date [%s] failed [%s], return current time instead", dateStr, err)
 			return now
 		}
 		return ret
@@ -218,11 +236,11 @@ func renderTemplate(p, id string) (string, error) {
 	tree = parseKTree(md)
 	if nil == tree {
 		msg := fmt.Sprintf("parse tree [%s] failed", p)
-		util.LogErrorf(msg)
+		logging.LogErrorf(msg)
 		return "", errors.New(msg)
 	}
 
-	var nodesNeedAppendChild []*ast.Node
+	var nodesNeedAppendChild, unlinks []*ast.Node
 	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
 		if !entering {
 			return ast.WalkContinue
@@ -232,6 +250,9 @@ func renderTemplate(p, id string) (string, error) {
 			// 重新生成 ID
 			n.ID = ast.NewNodeID()
 			n.SetIALAttr("id", n.ID)
+
+			// Blocks created via template update time earlier than creation time https://github.com/siyuan-note/siyuan/issues/8607
+			refreshUpdated(n)
 		}
 
 		if (ast.NodeListItem == n.Type && (nil == n.FirstChild ||
@@ -240,11 +261,28 @@ func renderTemplate(p, id string) (string, error) {
 			nodesNeedAppendChild = append(nodesNeedAppendChild, n)
 		}
 
-		appendRefTextRenderResultForBlockRef(n)
+		// 块引缺失锚文本情况下自动补全 https://github.com/siyuan-note/siyuan/issues/6087
+		if n.IsTextMarkType("block-ref") {
+			if refText := n.Text(); "" == refText {
+				refText = sql.GetRefText(n.TextMarkBlockRefID)
+				if "" != refText {
+					treenode.SetDynamicBlockRefText(n, refText)
+				} else {
+					unlinks = append(unlinks, n)
+				}
+			}
+		}
 		return ast.WalkContinue
 	})
 	for _, n := range nodesNeedAppendChild {
-		n.AppendChild(protyle.NewParagraph())
+		if ast.NodeBlockquote == n.Type {
+			n.FirstChild.InsertAfter(treenode.NewParagraph())
+		} else {
+			n.AppendChild(treenode.NewParagraph())
+		}
+	}
+	for _, n := range unlinks {
+		n.Unlink()
 	}
 
 	// 折叠标题导出为模板后使用会出现内容重复 https://github.com/siyuan-note/siyuan/issues/4488
@@ -264,26 +302,37 @@ func renderTemplate(p, id string) (string, error) {
 	return dom, nil
 }
 
-func appendRefTextRenderResultForBlockRef(blockRef *ast.Node) {
-	if ast.NodeBlockRef != blockRef.Type {
-		return
-	}
+func addBlockIALNodes(tree *parse.Tree, removeUpdated bool) {
+	var blocks []*ast.Node
+	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
+		if !entering || !n.IsBlock() {
+			return ast.WalkContinue
+		}
 
-	refText := blockRef.ChildByType(ast.NodeBlockRefText)
-	if nil != refText {
-		return
-	}
-	refText = blockRef.ChildByType(ast.NodeBlockRefDynamicText)
-	if nil != refText {
-		return
-	}
+		if ast.NodeBlockQueryEmbed == n.Type {
+			if script := n.ChildByType(ast.NodeBlockQueryEmbedScript); nil != script {
+				script.Tokens = bytes.ReplaceAll(script.Tokens, []byte("\n"), []byte(" "))
+			}
+		} else if ast.NodeHTMLBlock == n.Type {
+			n.Tokens = bytes.TrimSpace(n.Tokens)
+			// 使用 <div> 包裹，否则后续解析时会识别为行级 HTML https://github.com/siyuan-note/siyuan/issues/4244
+			if !bytes.HasPrefix(n.Tokens, []byte("<div>")) {
+				n.Tokens = append([]byte("<div>\n"), n.Tokens...)
+			}
+			if !bytes.HasSuffix(n.Tokens, []byte("</div>")) {
+				n.Tokens = append(n.Tokens, []byte("\n</div>")...)
+			}
+		}
 
-	// 动态解析渲染 ((id)) 的锚文本
-	// 现行版本已经不存在该语法情况，这里保留是为了迁移历史数据
-	refID := blockRef.ChildByType(ast.NodeBlockRefID)
-	text := sql.GetRefText(refID.TokensStr())
-	if Conf.Editor.BlockRefDynamicAnchorTextMaxLen < utf8.RuneCountInString(text) {
-		text = gulu.Str.SubStr(text, Conf.Editor.BlockRefDynamicAnchorTextMaxLen) + "..."
+		if removeUpdated {
+			n.RemoveIALAttr("updated")
+		}
+		if 0 < len(n.KramdownIAL) {
+			blocks = append(blocks, n)
+		}
+		return ast.WalkContinue
+	})
+	for _, block := range blocks {
+		block.InsertAfter(&ast.Node{Type: ast.NodeKramdownBlockIAL, Tokens: parse.IAL2Tokens(block.KramdownIAL)})
 	}
-	blockRef.AppendChild(&ast.Node{Type: ast.NodeBlockRefDynamicText, Tokens: gulu.Str.ToBytes(text)})
 }

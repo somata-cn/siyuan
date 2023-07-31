@@ -29,6 +29,12 @@
     width: 100%;
     height: 100%;
     position: relative;
+
+    .textLayer,
+    .pdf__resize {
+      /* dark 蓝色、紫色背景显示不清楚，文档位于 https://github.com/siyuan-note/siyuan/issues/5351 */
+      mix-blend-mode: multiply;
+    }
   }
 
   &__util {
@@ -56,13 +62,13 @@
       position: absolute;
 
       &:first-child {
-        border-bottom-left-radius: 3px;
-        border-top-left-radius: 3px;
+        border-bottom-left-radius: var(--b3-border-radius);
+        border-top-left-radius: var(--b3-border-radius);
       }
 
       &:last-child {
-        border-top-right-radius: 3px;
-        border-bottom-right-radius: 3px;
+        border-top-right-radius: var(--b3-border-radius);
+        border-bottom-right-radius: var(--b3-border-radius);
       }
     }
   }
@@ -71,7 +77,24 @@
     position: fixed;
     border: 2px solid var(--b3-pdf-background1);
     box-sizing: border-box;
-    border-radius: 4px;
+    border-radius: var(--b3-border-radius);
+  }
+}
+
+.pdf__outer--dark {
+  .pdfViewer .page canvas,
+  .thumbnailImage {
+    filter: grayscale(0%) invert(100%) contrast(100%) brightness(100%) hue-rotate(180deg);
+  }
+
+  .textLayer {
+    background-color: var(--b3-pdf-dark);
+  }
+
+  .textLayer,
+  .pdf__resize {
+    z-index: 2; // pdf 缩放后 canvas 会出现在末尾，导致无法选中和查看标注
+    mix-blend-mode: screen;
   }
 }
 
@@ -202,19 +225,33 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 0;
+  width: 6px;
   z-index: 200;
   cursor: ew-resize;
   right: -6px;
+
+  &:after {
+    content: "";
+    width: 1px;
+    height: 100%;
+    background-color: var(--b3-border-color);
+    position: absolute;
+    top: 0;
+    left: 3px;
+  }
+
+  &:hover:after {
+    background-color: var(--b3-scroll-color);
+  }
 }
 
 #loadingBar {
   position: absolute;
   height: 4px;
   background-color: var(--b3-theme-on-background);
-  border-bottom: 1px solid var(--b3-border-color);
   transition-duration: 200ms;
   transition-timing-function: ease;
+  z-index: 1;
 }
 
 #loadingBar {
@@ -236,7 +273,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 0%;
+  width: var(--progressBar-percent);
   height: 100%;
   background-color: var(--b3-theme-primary-light);
   overflow: hidden;
@@ -283,6 +320,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  overflow: initial;
 
   #findInput {
     width: 120px;
@@ -297,13 +335,9 @@
   right: 4px;
   position: absolute;
   top: 36px;
-}
-
-#secondaryToolbarButtonContainer {
-  max-width: 220px;
-  max-height: 400px;
-  overflow-y: auto;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
+  max-height: 60vh;
 }
 
 #secondaryToolbarButtonContainer.hiddenScrollModeButtons > .scrollModeButtons,
@@ -344,7 +378,7 @@
   }
 
   &[disabled] {
-    color: var(--b3-border-color);
+    color: var(--b3-theme-surface-lighter);
   }
 }
 
@@ -364,12 +398,18 @@
   }
 }
 
-.dropdownToolbarButton select {
-  min-width: 124px;
-  height: 24px;
+.dropdownToolbarButton {
+  --scale-select-width: 140px;
+  width: var(--scale-select-width);
   margin: 4px 8px 0 0;
-  line-height: 24px;
-  padding: 0 8px;
+
+  select {
+    width: inherit;
+    min-width: auto;
+    height: 24px;
+    line-height: 24px;
+    padding: 0 8px;
+  }
 }
 
 #customScaleOption {
@@ -389,11 +429,6 @@
   opacity: 0;
   position: absolute !important;
   margin: 10px 0 3px 7px;
-}
-
-.findbar .toolbarField[type="checkbox"]:checked + .b3-button {
-  background-color: var(--b3-theme-primary);
-  color: var(--b3-theme-on-primary);
 }
 
 .toolbarField.pageNumber {
@@ -448,10 +483,10 @@
 }
 
 .thumbnailSelectionRing {
-  border-radius: 2px;
+  border-radius: var(--b3-border-radius);
   padding: 7px;
   margin: 0 auto;
-  box-shadow: 0 0 1px 1px var(--b3-border-color);
+  box-shadow: 0 0 1px 1px var(--b3-theme-surface-lighter);
 }
 
 a:focus > .thumbnail > .thumbnailSelectionRing > .thumbnailImage,
@@ -487,7 +522,7 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
   min-width: 95%;
   height: auto;
   margin-bottom: 1px;
-  border-radius: 2px;
+  border-radius: var(--b3-border-radius);
   line-height: 15px;
   user-select: none;
   white-space: normal;
@@ -540,7 +575,7 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
 }
 
 .treeItem.selected > a {
-  background-color: var(--b3-border-color);
+  background-color: var(--b3-theme-surface-lighter);
 }
 
 .treeItemToggler:hover + a,
@@ -570,7 +605,7 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
 #errorMoreInfo {
   background-color: var(--b3-theme-surface);
   color: var(--b3-theme-on-surface);
-  border: 1px solid var(--b3-border-color);
+  border: 1px solid var(--b3-theme-surface-lighter);
   padding: 3px;
   margin: 3px;
   width: 98%;
@@ -585,66 +620,71 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
   border: 0 none !important;
 }
 
-#overlayContainer {
-  display: table;
+#dialogContainer > .dialog {
+  padding: 8px;
+  box-shadow: var(--b3-dialog-shadow);
+  border: 1px solid var(--b3-theme-surface-lighter);
+  background-color: var(--b3-theme-surface);
+  border-radius: var(--b3-border-radius-b);
+  width: 520px;
   position: absolute;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.2);
-  z-index: 40000;
+  inset-inline-start: 0px;
+  inset-inline-end: 0px;
+  height: fit-content;
+  margin: auto;
+  display: none;
+
+
+  &--open {
+    position: fixed;
+    inset-block-start: 0px;
+    inset-block-end: 0px;
+    max-width: calc((100% - 6px) - 2em);
+    max-height: calc((100% - 6px) - 2em);
+    user-select: text;
+    display: block;
+    z-index: 100;
+    overflow: auto;
+  }
+
+  & > .row {
+    display: table-row;
+
+    & > span {
+      white-space: nowrap;
+      color: var(--b3-theme-on-surface);
+      padding-right: 8px;
+    }
+  }
+
+  & > .row > * {
+    display: table-cell;
+    color: var(--b3-theme-on-background);
+  }
+
+  .toolbarField {
+    margin: 5px 0;
+  }
+
+  .separator {
+    display: block;
+    margin: 4px 0;
+    height: 1px;
+    width: 100%;
+    background-color: var(--b3-theme-surface-lighter);
+  }
+
+  .buttonRow {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  :link {
+    color: rgba(255, 255, 255, 1);
+  }
 }
 
-#overlayContainer > * {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-#overlayContainer > .container {
-  position: absolute;
-  top: 10%;
-  left: 10%;
-  height: 80%;
-  width: 80%;
-}
-
-#overlayContainer > .container > .dialog {
-  padding: 16px;
-  position: inherit;
-  overflow: auto;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.dialog > .row {
-  display: table-row;
-}
-
-.dialog > .row > * {
-  display: table-cell;
-}
-
-.dialog .toolbarField {
-  margin: 5px 0;
-}
-
-.dialog .separator {
-  display: block;
-  margin: 4px 0;
-  height: 1px;
-  width: 100%;
-  background-color: var(--b3-border-color);
-}
-
-.dialog .buttonRow {
-  text-align: center;
-  vertical-align: middle;
-}
-
-.dialog :link {
-  color: rgba(255, 255, 255, 1);
-}
-
-#passwordOverlay > .dialog {
+#passwordOverlay > dialog {
   text-align: center;
 }
 
@@ -652,7 +692,7 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
   width: 200px;
 }
 
-#documentPropertiesOverlay > .dialog {
+#documentPropertiesOverlay > dialog {
   text-align: left;
 }
 

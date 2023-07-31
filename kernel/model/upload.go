@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -27,12 +27,14 @@ import (
 	"github.com/88250/gulu"
 	"github.com/88250/lute/ast"
 	"github.com/gin-gonic/gin"
+	"github.com/siyuan-note/filelock"
+	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/sql"
 	"github.com/siyuan-note/siyuan/kernel/treenode"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
-func InsertLocalAssets(id string, assetPaths []string) (succMap map[string]interface{}, err error) {
+func InsertLocalAssets(id string, assetPaths []string, isUpload bool) (succMap map[string]interface{}, err error) {
 	succMap = map[string]interface{}{}
 
 	bt := treenode.GetBlockTree(id)
@@ -42,7 +44,13 @@ func InsertLocalAssets(id string, assetPaths []string) (succMap map[string]inter
 	}
 
 	docDirLocalPath := filepath.Join(util.DataDir, bt.BoxID, path.Dir(bt.Path))
-	assets := getAssetsDir(filepath.Join(util.DataDir, bt.BoxID), docDirLocalPath)
+	assetsDirPath := getAssetsDir(filepath.Join(util.DataDir, bt.BoxID), docDirLocalPath)
+	if !gulu.File.IsExist(assetsDirPath) {
+		if err = os.MkdirAll(assetsDirPath, 0755); nil != err {
+			return
+		}
+	}
+
 	for _, p := range assetPaths {
 		fName := filepath.Base(p)
 		fName = util.FilterUploadFileName(fName)
@@ -51,8 +59,11 @@ func InsertLocalAssets(id string, assetPaths []string) (succMap map[string]inter
 		ext = strings.ToLower(ext)
 		fName += ext
 		baseName := fName
-		if gulu.File.IsDir(p) {
-			succMap[baseName] = "file://" + p
+		if gulu.File.IsDir(p) || !isUpload {
+			if !strings.HasPrefix(p, "\\\\") {
+				p = "file://" + p
+			}
+			succMap[baseName] = p
 			continue
 		}
 
@@ -79,12 +90,12 @@ func InsertLocalAssets(id string, assetPaths []string) (succMap map[string]inter
 			ext := path.Ext(fName)
 			fName = fName[0 : len(fName)-len(ext)]
 			fName = fName + "-" + ast.NewNodeID() + ext
-			writePath := filepath.Join(assets, fName)
+			writePath := filepath.Join(assetsDirPath, fName)
 			if _, err = f.Seek(0, io.SeekStart); nil != err {
 				f.Close()
 				return
 			}
-			if err = gulu.File.WriteFileSaferByReader(writePath, f, 0644); nil != err {
+			if err = filelock.WriteFileByReader(writePath, f); nil != err {
 				f.Close()
 				return
 			}
@@ -92,7 +103,7 @@ func InsertLocalAssets(id string, assetPaths []string) (succMap map[string]inter
 			succMap[baseName] = "assets/" + fName
 		}
 	}
-	IncWorkspaceDataVer()
+	IncSync()
 	return
 }
 
@@ -102,7 +113,7 @@ func Upload(c *gin.Context) {
 
 	form, err := c.MultipartForm()
 	if nil != err {
-		util.LogErrorf("insert asset failed: %s", err)
+		logging.LogErrorf("insert asset failed: %s", err)
 		ret.Code = -1
 		ret.Msg = err.Error()
 		return
@@ -119,10 +130,14 @@ func Upload(c *gin.Context) {
 		docDirLocalPath := filepath.Join(util.DataDir, bt.BoxID, path.Dir(bt.Path))
 		assetsDirPath = getAssetsDir(filepath.Join(util.DataDir, bt.BoxID), docDirLocalPath)
 	}
+
+	relAssetsDirPath := "assets"
 	if nil != form.Value["assetsDirPath"] {
-		assetsDirPath = form.Value["assetsDirPath"][0]
-		assetsDirPath = filepath.Join(util.DataDir, assetsDirPath)
-		if err := os.MkdirAll(assetsDirPath, 0755); nil != err {
+		relAssetsDirPath = form.Value["assetsDirPath"][0]
+		assetsDirPath = filepath.Join(util.DataDir, relAssetsDirPath)
+	}
+	if !gulu.File.IsExist(assetsDirPath) {
+		if err = os.MkdirAll(assetsDirPath, 0755); nil != err {
 			ret.Code = -1
 			ret.Msg = err.Error()
 			return
@@ -159,19 +174,7 @@ func Upload(c *gin.Context) {
 			// 已经存在同样数据的资源文件的话不重复保存
 			succMap[baseName] = existAsset.Path
 		} else {
-			_, id := util.LastID(fName)
-			ext := path.Ext(fName)
-			fName = fName[0 : len(fName)-len(ext)]
-			if !util.IsIDPattern(id) {
-				id = ast.NewNodeID()
-				fName = fName + "-" + id + ext
-			} else {
-				if !util.IsIDPattern(fName) {
-					fName = fName[:len(fName)-len(id)-1] + "-" + id + ext
-				} else {
-					fName = fName + ext
-				}
-			}
+			fName = util.AssetName(fName)
 			writePath := filepath.Join(assetsDirPath, fName)
 			if _, err = f.Seek(0, io.SeekStart); nil != err {
 				errFiles = append(errFiles, fName)
@@ -179,14 +182,14 @@ func Upload(c *gin.Context) {
 				f.Close()
 				break
 			}
-			if err = gulu.File.WriteFileSaferByReader(writePath, f, 0644); nil != err {
+			if err = filelock.WriteFileByReader(writePath, f); nil != err {
 				errFiles = append(errFiles, fName)
 				ret.Msg = err.Error()
 				f.Close()
 				break
 			}
 			f.Close()
-			succMap[baseName] = "assets/" + fName
+			succMap[baseName] = strings.TrimPrefix(path.Join(relAssetsDirPath, fName), "/")
 		}
 	}
 
@@ -195,7 +198,7 @@ func Upload(c *gin.Context) {
 		"succMap":  succMap,
 	}
 
-	IncWorkspaceDataVer()
+	IncSync()
 }
 
 func getAssetsDir(boxLocalPath, docDirLocalPath string) (assets string) {

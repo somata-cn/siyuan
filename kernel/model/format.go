@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,6 @@
 package model
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 
@@ -25,8 +24,8 @@ import (
 	"github.com/88250/lute/ast"
 	"github.com/88250/lute/parse"
 	"github.com/88250/lute/render"
-	"github.com/siyuan-note/siyuan/kernel/filesys"
-	"github.com/siyuan-note/siyuan/kernel/sql"
+	"github.com/siyuan-note/filelock"
+	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
@@ -36,44 +35,38 @@ func AutoSpace(rootID string) (err error) {
 		return
 	}
 
-	util.PushEndlessProgress(Conf.Language(116))
-	defer util.ClearPushProgress(100)
+	util.PushProtyleLoading(rootID, Conf.Language(116))
+	defer util.PushProtyleReload(rootID)
+
+	WaitForWritingFiles()
 
 	generateFormatHistory(tree)
-
-	var blocks []*ast.Node
-	var rootIAL [][]string
-	// 添加 block ial，后面格式化渲染需要
+	luteEngine := NewLute()
+	// 合并相邻的同类行级节点
 	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
-		if !entering || !n.IsBlock() {
-			return ast.WalkContinue
-		}
-
-		if ast.NodeDocument == n.Type {
-			rootIAL = n.KramdownIAL
-			return ast.WalkContinue
-		}
-
-		if ast.NodeBlockQueryEmbed == n.Type {
-			if script := n.ChildByType(ast.NodeBlockQueryEmbedScript); nil != script {
-				script.Tokens = bytes.ReplaceAll(script.Tokens, []byte("\n"), []byte(" "))
+		if entering {
+			switch n.Type {
+			case ast.NodeTextMark:
+				luteEngine.MergeSameTextMark(n)
 			}
-		}
-
-		if 0 < len(n.KramdownIAL) {
-			blocks = append(blocks, n)
 		}
 		return ast.WalkContinue
 	})
-	for _, block := range blocks {
-		block.InsertAfter(&ast.Node{Type: ast.NodeKramdownBlockIAL, Tokens: parse.IAL2Tokens(block.KramdownIAL)})
-	}
 
-	luteEngine := NewLute()
-	luteEngine.SetAutoSpace(true)
+	rootIAL := tree.Root.KramdownIAL
+	addBlockIALNodes(tree, false)
+
+	// 第一次格式化为了合并相邻的文本节点
 	formatRenderer := render.NewFormatRenderer(tree, luteEngine.RenderOptions)
 	md := formatRenderer.Render()
 	newTree := parseKTree(md)
+	newTree.Root.Spec = "1"
+	// 第二次格式化启用自动空格
+	luteEngine.SetAutoSpace(true)
+	formatRenderer = render.NewFormatRenderer(newTree, luteEngine.RenderOptions)
+	md = formatRenderer.Render()
+	newTree = parseKTree(md)
+	newTree.Root.Spec = "1"
 	newTree.Root.ID = tree.ID
 	newTree.Root.KramdownIAL = rootIAL
 	newTree.ID = tree.ID
@@ -84,32 +77,33 @@ func AutoSpace(rootID string) (err error) {
 	if nil != err {
 		return
 	}
-	sql.WaitForWritingDatabase()
+	util.RandomSleep(500, 700)
 	return
 }
 
 func generateFormatHistory(tree *parse.Tree) {
-	historyDir, err := util.GetHistoryDir("format")
+	historyDir, err := GetHistoryDir(HistoryOpFormat)
 	if nil != err {
-		util.LogErrorf("get history dir failed: %s", err)
+		logging.LogErrorf("get history dir failed: %s", err)
 		return
 	}
 
 	historyPath := filepath.Join(historyDir, tree.Box, tree.Path)
 	if err = os.MkdirAll(filepath.Dir(historyPath), 0755); nil != err {
-		util.LogErrorf("generate history failed: %s", err)
+		logging.LogErrorf("generate history failed: %s", err)
 		return
 	}
 
 	var data []byte
-	if data, err = filesys.NoLockFileRead(filepath.Join(util.DataDir, tree.Box, tree.Path)); err != nil {
-		util.LogErrorf("generate history failed: %s", err)
+	if data, err = filelock.ReadFile(filepath.Join(util.DataDir, tree.Box, tree.Path)); err != nil {
+		logging.LogErrorf("generate history failed: %s", err)
 		return
 	}
 
 	if err = gulu.File.WriteFileSafer(historyPath, data, 0644); err != nil {
-		util.LogErrorf("generate history failed: %s", err)
+		logging.LogErrorf("generate history failed: %s", err)
 		return
 	}
 
+	indexHistoryDir(filepath.Base(historyDir), util.NewLute())
 }

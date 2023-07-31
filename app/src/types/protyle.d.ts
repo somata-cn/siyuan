@@ -1,6 +1,7 @@
 declare const echarts: {
     init(element: HTMLElement, theme?: string, options?: { width: number }): IEChart;
     dispose(element: Element): void;
+    getInstanceById(id: string): { resize: () => void };
 };
 
 declare const hljs: {
@@ -104,6 +105,14 @@ interface ILuteRender {
     renderBackslashContent?: ILuteRenderCallback;
 }
 
+interface IBreadcrumb {
+    id: string,
+    name: string,
+    type: string,
+    subType: string,
+    children: []
+}
+
 interface ILuteOptions extends IMarkdownConfig {
     emojis: IObject;
     emojiSite: string;
@@ -132,11 +141,21 @@ declare class Lute {
 
     public static GetHeadingID(node: ILuteNode): string;
 
+    public static BlockDOM2Content(html: string): string;
+
     private constructor();
+
+    public BlockDOM2Content(text: string): string;
+
+    public BlockDOM2EscapeMarkerContent(text: string): string;
+
+    public SetTextMark(enable: boolean): void;
 
     public SetHeadingID(enable: boolean): void;
 
     public SetProtyleMarkNetImg(enable: boolean): void;
+
+    public SetSpellcheck(enable: boolean): void;
 
     public SetFileAnnotationRef(enable: boolean): void;
 
@@ -151,6 +170,8 @@ declare class Lute {
     public SetImgPathAllowSpace(enable: boolean): void;
 
     public SetKramdownIAL(enable: boolean): void;
+
+    public BlockDOM2Md(html: string): string;
 
     public BlockDOM2StdMd(html: string): string;
 
@@ -190,8 +211,6 @@ declare class Lute {
 
     public PutEmojis(emojis: IObject): void;
 
-    public BlockDOM2Md(html: string): string;
-
     public SpinBlockDOM(html: string): string;
 
     public Md2BlockDOM(html: string): string;
@@ -203,6 +222,8 @@ declare class Lute {
     public IsValidLinkDest(text: string): boolean;
 
     public BlockDOM2InlineBlockDOM(html: string): string;
+
+    public BlockDOM2HTML(html: string): string;
 }
 
 declare const webkitAudioContext: {
@@ -263,6 +284,7 @@ interface IUpload {
 interface IMenuItem {
     /** 唯一标示 */
     name: string;
+    lang?: string;
     /** svg 图标 */
     icon?: string;
     /** 提示 */
@@ -317,6 +339,7 @@ interface IHintData {
     html: string;
     value: string;
     filter?: string[]
+    focus?: boolean
 }
 
 interface IHintExtend {
@@ -339,19 +362,24 @@ interface IHint {
 
 /** @link https://ld246.com/article/1549638745630#options */
 interface IOptions {
+    backlinkData?: {
+        blockPaths: IBreadcrumb[],
+        dom: string
+        expand: boolean
+    }[],
     action?: string[],
     mode?: TEditorMode,
     blockId: string
-    hasContext?: boolean
     key?: string
+    scrollAttr?: IScrollAttr
     defId?: string
     render?: {
         background?: boolean
         title?: boolean
         gutter?: boolean
         scroll?: boolean
+        breadcrumb?: boolean
         breadcrumbDocName?: boolean
-        breadcrumbContext?: boolean
     }
     /** 内部调试时使用 */
     _lutePath?: string;
@@ -375,20 +403,24 @@ interface IOptions {
     };
 
     /** 编辑器异步渲染完成后的回调方法 */
-    after?(protyle: import("../protyle/index").default): void;
+    after?(protyle: import("../protyle").Protyle): void;
 }
 
 interface IProtyle {
+    getInstance: () => import("../protyle").Protyle,
+    app: import("../index").App,
     transactionTime: number,
     id: string,
     block: {
         id?: string,
+        scroll?: boolean
         parentID?: string,
         parent2ID?: string,
         rootID?: string,
         showAll?: boolean
         mode?: number
         blockCount?: number
+        action?: string[]
     },
     disabled: boolean,
     selectElement?: HTMLElement,

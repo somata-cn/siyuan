@@ -4,6 +4,10 @@ import {Constants} from "../../constants";
 import {destroy} from "../util/destroy";
 import {fetchPost} from "../../util/fetch";
 import {getEditorRange} from "../util/selection";
+import {pathPosix} from "../../util/pathName";
+import {genAssetHTML} from "../../asset/renderAssets";
+import {hasClosestBlock} from "../util/hasClosest";
+import {getContenteditableElement} from "../wysiwyg/getBlock";
 
 export class Upload {
     public element: HTMLElement;
@@ -67,7 +71,7 @@ const validateFile = (protyle: IProtyle, files: File[]) => {
     }
     let msgId;
     if (errorTip !== "" || uploadingStr !== "") {
-        msgId = showMessage(`<ul>${errorTip}${uploadingStr}</ul>`);
+        msgId = showMessage(`<ul>${errorTip}${uploadingStr}</ul>`, -1);
     }
 
     return {files: uploadFileList, msgId};
@@ -94,45 +98,50 @@ const genUploadedLabel = (responseText: string, protyle: IProtyle) => {
     if (errorTip) {
         showMessage(errorTip);
     }
-
+    let insertBlock = true;
+    const range = getEditorRange(protyle.wysiwyg.element);
+    if (range.toString() === "" && range.startContainer.nodeType === 3 && protyle.toolbar.getCurrentType(range).length > 0) {
+        // 防止链接插入其他元素中 https://ld246.com/article/1676003478664
+        range.setEndAfter(range.startContainer.parentElement);
+        range.collapse(false);
+    }
+    // https://github.com/siyuan-note/siyuan/issues/7624
+    const nodeElement = hasClosestBlock(range.startContainer);
+    if (nodeElement) {
+        if (nodeElement.classList.contains("table")) {
+            insertBlock = false;
+        } else {
+            const editableElement = getContenteditableElement(nodeElement);
+            if (editableElement && editableElement.textContent !== "" && nodeElement.classList.contains("p")) {
+                insertBlock = false;
+            }
+        }
+    }
     let succFileText = "";
     const keys = Object.keys(response.data.succMap);
     keys.forEach((key, index) => {
         const path = response.data.succMap[key];
-        const lastIndex = key.lastIndexOf(".");
-        let type = key.substr(lastIndex);
-        let filename = protyle.options.upload.filename(key.substr(0, lastIndex)) + type;
-        if (-1 === lastIndex) {
-            type = "";
-            filename = protyle.options.upload.filename(key);
-        }
-        type = type.toLowerCase();
-        if (Constants.SIYUAN_ASSETS_AUDIO.includes(type)) {
-            succFileText += `<audio controls="controls" src="${path}"></audio>`;
-        } else if (Constants.SIYUAN_ASSETS_IMAGE.includes(type)) {
-            succFileText += `![${filename}](${path})`;
-        } else if (Constants.SIYUAN_ASSETS_VIDEO.includes(type)) {
-            succFileText += `<video controls="controls" src="${path}"></video>`;
-        } else {
-            succFileText += `[${filename}](${path})`;
-        }
-        if (keys.length - 1 !== index) {
-            succFileText += "\n";
+        const type = pathPosix().extname(key).toLowerCase();
+        const filename = protyle.options.upload.filename(key);
+        succFileText += genAssetHTML(type, path, filename.substring(0, filename.length - type.length), filename);
+        if (!Constants.SIYUAN_ASSETS_AUDIO.includes(type) && !Constants.SIYUAN_ASSETS_VIDEO.includes(type) &&
+            keys.length - 1 !== index) {
+            if (insertBlock) {
+                succFileText += "\n\n";
+            } else {
+                succFileText += "\n";
+            }
         }
     });
-    const range = getEditorRange(protyle.wysiwyg.element);
-    if (!succFileText.startsWith("<") && range.toString() === "" && range.startContainer.nodeType === 3 && protyle.toolbar.getCurrentType(range).length > 0) {
-        // 防止链接插入其他元素中
-        range.setEndAfter(range.startContainer.parentElement);
-        range.collapse(false);
-    }
-    insertHTML(protyle.lute.SpinBlockDOM(succFileText), protyle);
+    // 避免插入代码块中，其次因为都要独立成块 https://github.com/siyuan-note/siyuan/issues/7607
+    insertHTML(succFileText, protyle, insertBlock);
 };
 
-export const uploadLocalFiles = (files: string[], protyle: IProtyle) => {
+export const uploadLocalFiles = (files: string[], protyle: IProtyle, isUpload: boolean) => {
     const msgId = showMessage(window.siyuan.languages.uploading, 0);
     fetchPost("/api/asset/insertLocalAssets", {
         assetPaths: files,
+        isUpload,
         id: protyle.block.rootID
     }, (response) => {
         hideMessage(msgId);
@@ -150,7 +159,7 @@ export const uploadFiles = (protyle: IProtyle, files: FileList | DataTransferIte
         }
         if (0 === fileItem.size && "" === fileItem.type && -1 === fileItem.name.indexOf(".")) {
             // 文件夹
-            document.execCommand("insertHTML", false, `[${fileItem.name}](file://${fileItem.path})`);
+            uploadLocalFiles([fileItem.path], protyle, false);
         } else {
             fileList.push(fileItem);
         }

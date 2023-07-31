@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -24,9 +24,64 @@ import (
 
 	"github.com/88250/gulu"
 	"github.com/gin-gonic/gin"
+	"github.com/siyuan-note/filelock"
 	"github.com/siyuan-note/siyuan/kernel/model"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
+
+func getImageOCRText(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	path := arg["path"].(string)
+	force := false
+	if forceArg := arg["force"]; nil != forceArg {
+		force = forceArg.(bool)
+	}
+
+	ret.Data = map[string]interface{}{
+		"text": util.GetAssetText(path, force),
+	}
+}
+
+func setImageOCRText(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	path := arg["path"].(string)
+	text := arg["text"].(string)
+	util.SetAssetText(path, text)
+}
+
+func renameAsset(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	oldPath := arg["oldPath"].(string)
+	newName := arg["newName"].(string)
+	err := model.RenameAsset(oldPath, newName)
+	if nil != err {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		ret.Data = map[string]interface{}{"closeTimeout": 5000}
+		return
+	}
+}
 
 func getDocImageAssets(c *gin.Context) {
 	ret := gulu.Ret.NewResult()
@@ -65,12 +120,12 @@ func setFileAnnotation(c *gin.Context) {
 		ret.Msg = err.Error()
 		return
 	}
-	if err := gulu.File.WriteFileSafer(writePath, []byte(data), 0644); nil != err {
+	if err := filelock.WriteFile(writePath, []byte(data)); nil != err {
 		ret.Code = -1
 		ret.Msg = err.Error()
 		return
 	}
-	model.IncWorkspaceDataVer()
+	model.IncSync()
 }
 
 func getFileAnnotation(c *gin.Context) {
@@ -155,6 +210,16 @@ func getUnusedAssets(c *gin.Context) {
 	}
 }
 
+func getMissingAssets(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	missingAssets := model.MissingAssets()
+	ret.Data = map[string]interface{}{
+		"missingAssets": missingAssets,
+	}
+}
+
 func resolveAssetPath(c *gin.Context) {
 	ret := gulu.Ret.NewResult()
 	defer c.JSON(http.StatusOK, ret)
@@ -210,8 +275,13 @@ func insertLocalAssets(c *gin.Context) {
 	for _, pathArg := range assetPathsArg {
 		assetPaths = append(assetPaths, pathArg.(string))
 	}
+	isUpload := true
+	isUploadArg := arg["isUpload"]
+	if nil != isUploadArg {
+		isUpload = isUploadArg.(bool)
+	}
 	id := arg["id"].(string)
-	succMap, err := model.InsertLocalAssets(id, assetPaths)
+	succMap, err := model.InsertLocalAssets(id, assetPaths, isUpload)
 	if nil != err {
 		ret.Code = -1
 		ret.Msg = err.Error()

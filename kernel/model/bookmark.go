@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -22,10 +22,57 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/88250/lute/parse"
+	"github.com/siyuan-note/siyuan/kernel/cache"
 	"github.com/siyuan-note/siyuan/kernel/sql"
 	"github.com/siyuan-note/siyuan/kernel/treenode"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
+
+func RemoveBookmark(bookmark string) (err error) {
+	util.PushEndlessProgress(Conf.Language(116))
+
+	bookmarks := sql.QueryBookmarkBlocksByKeyword(bookmark)
+	treeBlocks := map[string][]string{}
+	for _, tag := range bookmarks {
+		if blocks, ok := treeBlocks[tag.RootID]; !ok {
+			treeBlocks[tag.RootID] = []string{tag.ID}
+		} else {
+			treeBlocks[tag.RootID] = append(blocks, tag.ID)
+		}
+	}
+
+	for treeID, blocks := range treeBlocks {
+		util.PushEndlessProgress("[" + treeID + "]")
+		tree, e := loadTreeByBlockID(treeID)
+		if nil != e {
+			util.PushClearProgress()
+			return e
+		}
+
+		for _, blockID := range blocks {
+			node := treenode.GetNodeInTree(tree, blockID)
+			if nil == node {
+				continue
+			}
+
+			if bookmarkAttrVal := node.IALAttr("bookmark"); bookmarkAttrVal == bookmark {
+				node.RemoveIALAttr("bookmark")
+				cache.PutBlockIAL(node.ID, parse.IAL2Map(node.KramdownIAL))
+			}
+		}
+
+		util.PushEndlessProgress(fmt.Sprintf(Conf.Language(111), tree.Root.IALAttr("title")))
+		if err = writeJSONQueue(tree); nil != err {
+			util.ClearPushProgress(100)
+			return
+		}
+		util.RandomSleep(50, 150)
+	}
+
+	util.ReloadUI()
+	return
+}
 
 func RenameBookmark(oldBookmark, newBookmark string) (err error) {
 	if treenode.ContainsMarker(newBookmark) {
@@ -69,6 +116,7 @@ func RenameBookmark(oldBookmark, newBookmark string) (err error) {
 
 			if bookmarkAttrVal := node.IALAttr("bookmark"); bookmarkAttrVal == oldBookmark {
 				node.SetIALAttr("bookmark", newBookmark)
+				cache.PutBlockIAL(node.ID, parse.IAL2Map(node.KramdownIAL))
 			}
 		}
 
@@ -80,8 +128,6 @@ func RenameBookmark(oldBookmark, newBookmark string) (err error) {
 		util.RandomSleep(50, 150)
 	}
 
-	util.PushEndlessProgress(Conf.Language(113))
-	sql.WaitForWritingDatabase()
 	util.ReloadUI()
 	return
 }
@@ -110,7 +156,9 @@ func BookmarkLabels() (ret []string) {
 
 func BuildBookmark() (ret *Bookmarks) {
 	WaitForWritingFiles()
-	sql.WaitForWritingDatabase()
+	if !sql.IsEmptyQueue() {
+		sql.WaitForWritingDatabase()
+	}
 
 	ret = &Bookmarks{}
 	sqlBlocks := sql.QueryBookmarkBlocks()
@@ -118,6 +166,12 @@ func BuildBookmark() (ret *Bookmarks) {
 	blocks := fromSQLBlocks(&sqlBlocks, "", 0)
 	for _, block := range blocks {
 		label := BookmarkLabel(block.IAL["bookmark"])
+
+		if "" != block.Name {
+			// Blocks in the bookmark panel display their name instead of content https://github.com/siyuan-note/siyuan/issues/8514
+			block.Content = block.Name
+		}
+
 		if bs, ok := labelBlocks[label]; ok {
 			bs = append(bs, block)
 			labelBlocks[label] = bs

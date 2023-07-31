@@ -5,10 +5,14 @@ import {uploadFiles} from "../upload";
 import {fetchPost} from "../../util/fetch";
 import {getRandomEmoji, openEmojiPanel, unicode2Emoji, updateFileTreeEmoji, updateOutlineEmoji} from "../../emoji";
 import {upDownHint} from "../../util/upDownHint";
-import {setPosition} from "../../util/setPosition";
+/// #if !MOBILE
 import {openGlobalSearch} from "../../search/util";
+/// #else
+import {popSearch} from "../../mobile/menu/search";
+/// #endif
 import {getEventName} from "../util/compatibility";
 import {Dialog} from "../../dialog";
+import {Constants} from "../../constants";
 
 export class Background {
     public element: HTMLElement;
@@ -36,59 +40,109 @@ export class Background {
         <span class="protyle-icon protyle-icon--last" data-type="confirm">${window.siyuan.languages.confirm}</span>
     </div>
 </div>
-<div class="protyle-background__tags"></div>
+<div class="b3-chips"></div>
 <div class="protyle-background__iconw">
     <div class="protyle-background__icon" data-menu="true" data-type="open-emoji"></div>
     <div class="protyle-icons fn__flex-center">
         <span class="protyle-icon protyle-icon--first b3-tooltips b3-tooltips__s" data-menu="true" data-type="tag" aria-label="${window.siyuan.languages.addTag}"><svg><use xlink:href="#iconTags"></use></svg></span>
-        <span class="protyle-icon b3-tooltips b3-tooltips__s" data-type="icon" aria-label="${window.siyuan.languages.changeIcon}"><svg><use xlink:href="#iconEmoji"></use></svg></span>
+        <span class="protyle-icon b3-tooltips b3-tooltips__s" data-type="icon" aria-label="${window.siyuan.languages.randomIcon}"><svg><use xlink:href="#iconEmoji"></use></svg></span>
         <span class="protyle-icon protyle-icon--last b3-tooltips b3-tooltips__s" data-type="random" aria-label="${window.siyuan.languages.titleBg}"><svg><use xlink:href="#iconImage"></use></svg></span>
     </div>
 </div>`;
-        this.tagsElement = this.element.querySelector(".protyle-background__tags") as HTMLElement;
+        this.tagsElement = this.element.querySelector(".b3-chips") as HTMLElement;
         this.iconElement = this.element.querySelector(".protyle-background__icon") as HTMLElement;
         this.imgElement = this.element.firstElementChild.firstElementChild as HTMLImageElement;
-        this.imgElement.addEventListener("mousedown", (event: MouseEvent & { target: HTMLElement }) => {
-            event.preventDefault();
-            if (!this.element.firstElementChild.querySelector(".protyle-icons").classList.contains("fn__none")) {
-                return;
-            }
-            const y = event.clientY;
-            const documentSelf = document;
-            const height = this.imgElement.naturalHeight * this.imgElement.clientWidth / this.imgElement.naturalWidth - this.imgElement.clientHeight;
-            let originalPositionY = parseFloat(this.imgElement.style.objectPosition.substring(7)) || 50;
-            if (this.imgElement.style.objectPosition.endsWith("px")) {
-                originalPositionY = -parseInt(this.imgElement.style.objectPosition.substring(7)) / height * 100;
-            }
-            documentSelf.onmousemove = (moveEvent: MouseEvent) => {
-                this.imgElement.style.objectPosition = `center ${((y - moveEvent.clientY) / height * 100 + originalPositionY).toFixed(2)}%`;
+        if (isMobile()) {
+            this.imgElement.addEventListener("touchstart", (event: TouchEvent & { target: HTMLElement }) => {
                 event.preventDefault();
-            };
+                if (!this.element.firstElementChild.querySelector(".protyle-icons").classList.contains("fn__none")) {
+                    return;
+                }
+                const y = event.touches[0].clientY;
+                const documentSelf = document;
+                const height = this.imgElement.naturalHeight * this.imgElement.clientWidth / this.imgElement.naturalWidth - this.imgElement.clientHeight;
+                let originalPositionY = parseFloat(this.imgElement.style.objectPosition.substring(7)) || 50;
+                if (this.imgElement.style.objectPosition.endsWith("px")) {
+                    originalPositionY = -parseInt(this.imgElement.style.objectPosition.substring(7)) / height * 100;
+                }
+                documentSelf.ontouchmove = (moveEvent) => {
+                    this.imgElement.style.objectPosition = `center ${((y - moveEvent.touches[0].clientY) / height * 100 + originalPositionY).toFixed(2)}%`;
+                    event.preventDefault();
+                };
 
-            documentSelf.onmouseup = () => {
-                documentSelf.onmousemove = null;
-                documentSelf.onmouseup = null;
-                documentSelf.ondragstart = null;
-                documentSelf.onselectstart = null;
-                documentSelf.onselect = null;
-            };
-        });
-        this.element.querySelector("input").addEventListener("change", (event: InputEvent & { target: HTMLInputElement }) => {
+                documentSelf.ontouchend = () => {
+                    documentSelf.ontouchmove = null;
+                    documentSelf.ontouchstart = null;
+                    documentSelf.ondragstart = null;
+                    documentSelf.onselectstart = null;
+                    documentSelf.onselect = null;
+                };
+            });
+        } else {
+            this.element.addEventListener("dragover", async (event) => {
+                event.preventDefault();
+            });
+            this.element.addEventListener("drop", async (event: DragEvent & { target: HTMLElement }) => {
+                if (event.dataTransfer.types[0] === "Files" && event.dataTransfer.files[0].type.indexOf("image") !== -1) {
+                    uploadFiles(protyle, [event.dataTransfer.files[0]], undefined, (responseText) => {
+                        const response = JSON.parse(responseText);
+                        const style = `background-image:url("${response.data.succMap[Object.keys(response.data.succMap)[0]]}")`;
+                        this.ial["title-img"] = style;
+                        this.render(this.ial, protyle.block.rootID);
+                        fetchPost("/api/attr/setBlockAttrs", {
+                            id: protyle.block.rootID,
+                            attrs: {"title-img": style}
+                        });
+                    });
+                }
+            });
+            this.imgElement.addEventListener("mousedown", (event: MouseEvent & { target: HTMLElement }) => {
+                event.preventDefault();
+                if (!this.element.firstElementChild.querySelector(".protyle-icons").classList.contains("fn__none")) {
+                    return;
+                }
+                const y = event.clientY;
+                const documentSelf = document;
+                const height = this.imgElement.naturalHeight * this.imgElement.clientWidth / this.imgElement.naturalWidth - this.imgElement.clientHeight;
+                let originalPositionY = parseFloat(this.imgElement.style.objectPosition.substring(7)) || 50;
+                if (this.imgElement.style.objectPosition.endsWith("px")) {
+                    originalPositionY = -parseInt(this.imgElement.style.objectPosition.substring(7)) / height * 100;
+                }
+                documentSelf.onmousemove = (moveEvent: MouseEvent) => {
+                    this.imgElement.style.objectPosition = `center ${((y - moveEvent.clientY) / height * 100 + originalPositionY).toFixed(2)}%`;
+                    event.preventDefault();
+                };
+
+                documentSelf.onmouseup = () => {
+                    documentSelf.onmousemove = null;
+                    documentSelf.onmouseup = null;
+                    documentSelf.ondragstart = null;
+                    documentSelf.onselectstart = null;
+                    documentSelf.onselect = null;
+                };
+            });
+        }
+        this.element.querySelector("input").addEventListener("change", (event: InputEvent & {
+            target: HTMLInputElement
+        }) => {
             if (event.target.files.length === 0) {
                 return;
             }
             uploadFiles(protyle, event.target.files, event.target, (responseText) => {
                 const response = JSON.parse(responseText);
-                const style = `background-image:url(${response.data.succMap[Object.keys(response.data.succMap)[0]]})`;
-                this.ial["title-img"] = Lute.EscapeHTMLStr(style);
+                const style = `background-image:url("${response.data.succMap[Object.keys(response.data.succMap)[0]]}")`;
+                this.ial["title-img"] = style;
                 this.render(this.ial, protyle.block.rootID);
                 fetchPost("/api/attr/setBlockAttrs", {
                     id: protyle.block.rootID,
-                    attrs: {"title-img": Lute.EscapeHTMLStr(style)}
+                    attrs: {"title-img": style}
                 });
             });
         });
         this.element.addEventListener(getEventName(), (event) => {
+            if (protyle.disabled) {
+                return;
+            }
             let target = event.target as HTMLElement;
             hideElements(["gutter"], protyle);
 
@@ -110,7 +164,7 @@ export class Background {
                     iconElements[1].classList.add("fn__none");
                     iconElements[2].classList.add("fn__none");
                     if (type === "confirm") {
-                        const style = Lute.EscapeHTMLStr(`background-image:url(${this.imgElement.getAttribute("src")});object-position:${this.imgElement.style.objectPosition}`);
+                        const style = `background-image:url("${this.imgElement.getAttribute("src")}");object-position:${this.imgElement.style.objectPosition}`;
                         this.ial["title-img"] = style;
                         fetchPost("/api/attr/setBlockAttrs", {
                             id: protyle.block.rootID,
@@ -205,7 +259,7 @@ export class Background {
                         "background-image:linear-gradient(-225deg, #231557 0%, #44107A 29%, #FF1361 67%, #FFF800 100%)"
                     ];
                     const style = bgs[getRandom(0, bgs.length - 1)];
-                    this.ial["title-img"] = Lute.EscapeHTMLStr(style);
+                    this.ial["title-img"] = style;
                     this.render(this.ial, protyle.block.rootID);
                     fetchPost("/api/attr/setBlockAttrs", {
                         id: protyle.block.rootID,
@@ -227,28 +281,28 @@ export class Background {
                 } else if (type === "icon") {
                     const emoji = getRandomEmoji();
                     if (emoji) {
-                        this.ial.icon = emoji;
-                        this.render(this.ial, protyle.block.rootID);
                         updateFileTreeEmoji(emoji, protyle.block.rootID);
-                        updateOutlineEmoji(emoji);
+                        updateOutlineEmoji(emoji, protyle.block.rootID);
                         fetchPost("/api/attr/setBlockAttrs", {
                             id: protyle.block.rootID,
                             attrs: {"icon": emoji}
                         });
-                        protyle.model.parent.setDocIcon(emoji);
+                        if (protyle.model) {
+                            protyle.model.parent.setDocIcon(emoji);
+                        }
                     }
                     event.preventDefault();
                     event.stopPropagation();
                     break;
                 } else if (type === "tag") {
-                    this.openTag();
+                    this.openTag(protyle);
                     event.preventDefault();
                     event.stopPropagation();
                     break;
                 } else if (type === "link") {
                     const dialog = new Dialog({
                         title: window.siyuan.languages.link,
-                        width: isMobile() ? "80vw" : "520px",
+                        width: isMobile() ? "92vw" : "520px",
                         content: `<div class="b3-dialog__content">
         <input class="b3-text-field fn__block">
 </div>
@@ -262,8 +316,8 @@ export class Background {
                         dialog.destroy();
                     });
                     btnsElement[1].addEventListener("click", () => {
-                        const style = `background-image:url(${dialog.element.querySelector("input").value});`;
-                        this.ial["title-img"] = Lute.EscapeHTMLStr(style);
+                        const style = `background-image:url("${dialog.element.querySelector("input").value}");`;
+                        this.ial["title-img"] = style;
                         this.render(this.ial, protyle.block.rootID);
                         fetchPost("/api/attr/setBlockAttrs", {
                             id: protyle.block.rootID,
@@ -276,9 +330,24 @@ export class Background {
                     event.stopPropagation();
                     break;
                 } else if (type === "open-search") {
-                    if (!isMobile()) {
-                        openGlobalSearch(`#${target.textContent}#`, !window.siyuan.ctrlIsPressed);
-                    }
+                    /// #if !MOBILE
+                    openGlobalSearch(protyle.app, `#${target.textContent}#`, !window.siyuan.ctrlIsPressed);
+                    /// #else
+                    const searchOption = window.siyuan.storage[Constants.LOCAL_SEARCHDATA];
+                    popSearch(protyle.app, {
+                        removed: searchOption.removed,
+                        sort: searchOption.sort,
+                        group: searchOption.group,
+                        hasReplace: false,
+                        method: 0,
+                        hPath: "",
+                        idPath: [],
+                        k: `#${target.textContent}#`,
+                        r: "",
+                        page: 1,
+                        types: Object.assign({}, searchOption.types)
+                    });
+                    /// #endif
                     event.preventDefault();
                     event.stopPropagation();
                     break;
@@ -304,16 +373,18 @@ export class Background {
         });
     }
 
-    public render(ial: IObject, id: string) {
+    public render(ial: IObject, rootId: string) {
         const img = ial["title-img"];
         const icon = ial.icon;
         const tags = ial.tags;
         this.ial = ial;
-        this.element.setAttribute("data-node-id", id);
+        // 为主题提供样式基础
+        this.element.setAttribute("data-node-id", rootId);
         if (tags) {
             let html = "";
+            const colors = ["secondary", "primary", "info", "success", "warning", "error", "pink"];
             tags.split(",").forEach((item, index) => {
-                html += `<div class="item item--${index % 4}" data-type="open-search">${item}<svg data-type="remove-tag"><use xlink:href="#iconClose"></use></svg></div>`;
+                html += `<div class="b3-chip b3-chip--middle b3-chip--pointer b3-chip--${colors[index % 7]}" data-type="open-search">${item}<svg class="b3-chip__close" data-type="remove-tag"><use xlink:href="#iconCloseRound"></use></svg></div>`;
             });
             this.tagsElement.innerHTML = html;
         } else {
@@ -331,9 +402,9 @@ export class Background {
             this.imgElement.classList.remove("fn__none");
             // 历史数据解析：background-image: url(\"assets/沙发背景墙11-20220418171700-w6vilzt.jpeg\"); background-position: center -254px; background-size: cover; background-repeat: no-repeat; min-height: 30vh
             this.imgElement.setAttribute("style", Lute.UnEscapeHTMLStr(img));
-            const position = this.imgElement.style.backgroundPosition || this.imgElement.style.objectPosition;
-            const url = this.imgElement.style.backgroundImage?.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
             if (img.indexOf("url(") > -1) {
+                const position = this.imgElement.style.backgroundPosition || this.imgElement.style.objectPosition;
+                const url = this.imgElement.style.backgroundImage?.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
                 this.imgElement.removeAttribute("style");
                 this.imgElement.setAttribute("src", url);
                 this.imgElement.style.objectPosition = position;
@@ -347,7 +418,8 @@ export class Background {
         }
 
         if (img) {
-            this.element.style.minHeight = "30vh";
+            // 移动端键盘弹起和点击加号需保持滚动高度一致
+            this.element.style.minHeight = isMobile() ? "200px" : "30vh";
         } else if (icon) {
             this.element.style.minHeight = (this.tagsElement.clientHeight + 56) + "px";
         } else if (tags) {
@@ -357,7 +429,7 @@ export class Background {
         }
     }
 
-    private openTag() {
+    private openTag(protyle: IProtyle) {
         fetchPost("/api/search/searchTag", {
             k: "",
         }, (response) => {
@@ -366,7 +438,7 @@ export class Background {
                 html += `<div class="b3-list-item${index === 0 ? " b3-list-item--focus" : ""}">${item}</div>`;
             });
             window.siyuan.menus.menu.remove();
-            window.siyuan.menus.menu.element.innerHTML = `<div class="fn__flex-column" style="max-height:50vh"><input style="margin: 4px 8px 8px 8px" class="b3-text-field"/>
+            window.siyuan.menus.menu.element.lastElementChild.innerHTML = `<div class="fn__flex-column" style="max-height:50vh"><input style="margin: 4px 8px 8px 8px" class="b3-text-field"/>
 <div class="b3-list fn__flex-1 b3-list--background" style="position: relative">${html}</div>
 </div>`;
 
@@ -381,9 +453,9 @@ export class Background {
                 if (event.key === "Enter") {
                     const currentElement = listElement.querySelector(".b3-list-item--focus");
                     if (currentElement) {
-                        this.addTags(currentElement.textContent);
+                        this.addTags(currentElement.textContent, protyle);
                     } else {
-                        this.addTags(inputElement.value);
+                        this.addTags(inputElement.value, protyle);
                     }
                     window.siyuan.menus.menu.remove();
                 } else if (event.key === "Escape") {
@@ -416,36 +488,34 @@ export class Background {
                 if (!listItemElement) {
                     return;
                 }
-                this.addTags(listItemElement.textContent);
+                this.addTags(listItemElement.textContent, protyle);
             });
-            window.siyuan.menus.menu.element.classList.remove("fn__none");
             const rect = this.iconElement.nextElementSibling.getBoundingClientRect();
-            setPosition(window.siyuan.menus.menu.element, rect.left, rect.top + rect.height);
+            window.siyuan.menus.menu.popup({x: rect.left, y: rect.top + rect.height});
             inputElement.focus();
         });
     }
 
     private getTags() {
         const tags: string[] = [];
-        this.tagsElement.querySelectorAll(".item").forEach(item => {
+        this.tagsElement.querySelectorAll(".b3-chip").forEach(item => {
             tags.push(item.textContent.trim());
         });
         return tags;
     }
 
-    private addTags(tag: string) {
+    private addTags(tag: string, protyle: IProtyle) {
         window.siyuan.menus.menu.remove();
         const tags = this.getTags();
         if (tags.includes(tag)) {
             return;
         }
         tags.push(tag);
-        const id = this.element.getAttribute("data-node-id");
         fetchPost("/api/attr/setBlockAttrs", {
-            id,
+            id: protyle.block.rootID,
             attrs: {"tags": tags.toString()}
         });
         this.ial.tags = tags.toString();
-        this.render(this.ial, id);
+        this.render(this.ial, protyle.block.rootID);
     }
 }

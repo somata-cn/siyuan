@@ -1,10 +1,11 @@
 {
 	"ID": "20220414110705-tu2un99",
+	"Spec": "1",
 	"Type": "NodeDocument",
 	"Properties": {
 		"id": "20220414110705-tu2un99",
 		"title": "收集箱",
-		"updated": "20220420002346"
+		"updated": "20221022010553"
 	},
 	"Children": [
 		{
@@ -71,12 +72,12 @@
 			"HeadingLevel": 3,
 			"Properties": {
 				"id": "20220414111331-ydv21ws",
-				"updated": "20220414111346"
+				"updated": "20220803163214"
 			},
 			"Children": [
 				{
 					"Type": "NodeText",
-					"Data": "微信公众号输入"
+					"Data": "微信输入"
 				}
 			]
 		},
@@ -84,8 +85,7 @@
 			"ID": "20220414111447-0byxaq6",
 			"Type": "NodeList",
 			"ListData": {
-				"Typ": 1,
-				"Marker": "MS4="
+				"Typ": 1
 			},
 			"Properties": {
 				"id": "20220414111447-0byxaq6",
@@ -119,30 +119,10 @@
 									"Data": "在 "
 								},
 								{
-									"Type": "NodeLink",
-									"Data": "span",
-									"Children": [
-										{
-											"Type": "NodeOpenBracket"
-										},
-										{
-											"Type": "NodeLinkText",
-											"Data": "链滴 - 设置 - 账号"
-										},
-										{
-											"Type": "NodeCloseBracket"
-										},
-										{
-											"Type": "NodeOpenParen"
-										},
-										{
-											"Type": "NodeLinkDest",
-											"Data": "https://ld246.com/settings/account"
-										},
-										{
-											"Type": "NodeCloseParen"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "a",
+									"TextMarkAHref": "https://ld246.com/settings/account",
+									"TextMarkTextContent": "链滴 - 设置 - 账号"
 								},
 								{
 									"Type": "NodeText",
@@ -179,20 +159,9 @@
 									"Data": "关注 "
 								},
 								{
-									"Type": "NodeCodeSpan",
-									"Data": "code",
-									"Children": [
-										{
-											"Type": "NodeCodeSpanOpenMarker"
-										},
-										{
-											"Type": "NodeCodeSpanContent",
-											"Data": "B3log开源"
-										},
-										{
-											"Type": "NodeCodeSpanCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "code",
+									"TextMarkTextContent": "B3log开源"
 								},
 								{
 									"Type": "NodeText",
@@ -236,6 +205,10 @@
 											"Type": "NodeCloseParen"
 										}
 									]
+								},
+								{
+									"Type": "NodeText",
+									"Data": "​"
 								}
 							]
 						}
@@ -292,7 +265,11 @@
 							"Children": [
 								{
 									"Type": "NodeText",
-									"Data": "对该公众号发送消息（可从收藏中选择待发送消息），仅支持文本、图片和超链接"
+									"Data": "对该公众号发送消息（可从收藏中选择待发送消息），仅支持文本、图片和"
+								},
+								{
+									"Type": "NodeText",
+									"Data": "超链接"
 								}
 							]
 						}
@@ -327,6 +304,82 @@
 							]
 						}
 					]
+				}
+			]
+		},
+		{
+			"ID": "20220803163218-jp58a1p",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20220803163218-jp58a1p",
+				"updated": "20220803163323"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "关注公众号并绑定账号后除了可以通过公众号输入，也可以通过添加 "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "code",
+					"TextMarkTextContent": "思源小助手"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " 为联系人后输入，这样可以直接转发聊天记录。"
+				}
+			]
+		},
+		{
+			"ID": "20220803163324-90f8rc0",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20220803163324-90f8rc0",
+				"updated": "20220803164829"
+			},
+			"Children": [
+				{
+					"Type": "NodeImage",
+					"Data": "span",
+					"Children": [
+						{
+							"Type": "NodeBang"
+						},
+						{
+							"Type": "NodeOpenBracket"
+						},
+						{
+							"Type": "NodeLinkText",
+							"Data": "image"
+						},
+						{
+							"Type": "NodeCloseBracket"
+						},
+						{
+							"Type": "NodeOpenParen"
+						},
+						{
+							"Type": "NodeLinkDest",
+							"Data": "assets/image-20220803164829-wrh3h5w.png"
+						},
+						{
+							"Type": "NodeCloseParen"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ID": "20221022010309-yp452cb",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20221022010309-yp452cb",
+				"updated": "20221022010553"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "支持的消息类型为文本、图片、语音、视频和文件，单个图片、语音、视频和文件的大小不超过 10M。"
 				}
 			]
 		},
@@ -379,20 +432,9 @@
 									"Data": "POST "
 								},
 								{
-									"Type": "NodeCodeSpan",
-									"Data": "code",
-									"Children": [
-										{
-											"Type": "NodeCodeSpanOpenMarker"
-										},
-										{
-											"Type": "NodeCodeSpanContent",
-											"Data": "https://ld246.com/apis/siyuan/inbox/addCloudShorthand"
-										},
-										{
-											"Type": "NodeCodeSpanCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "code",
+									"TextMarkTextContent": "https://ld246.com/apis/siyuan/inbox/addCloudShorthand"
 								}
 							]
 						}
@@ -477,70 +519,28 @@
 									"Data": "鉴权方式为 HTTP 请求标头 "
 								},
 								{
-									"Type": "NodeCodeSpan",
-									"Data": "code",
-									"Children": [
-										{
-											"Type": "NodeCodeSpanOpenMarker"
-										},
-										{
-											"Type": "NodeCodeSpanContent",
-											"Data": "Authorization"
-										},
-										{
-											"Type": "NodeCodeSpanCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "code",
+									"TextMarkTextContent": "Authorization"
 								},
 								{
 									"Type": "NodeText",
 									"Data": "，值为 "
 								},
 								{
-									"Type": "NodeCodeSpan",
-									"Data": "code",
-									"Children": [
-										{
-											"Type": "NodeCodeSpanOpenMarker"
-										},
-										{
-											"Type": "NodeCodeSpanContent",
-											"Data": "token {Your API Token}"
-										},
-										{
-											"Type": "NodeCodeSpanCloseMarker"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "code",
+									"TextMarkTextContent": "token {Your API Token}"
 								},
 								{
 									"Type": "NodeText",
 									"Data": "（注意大小写和空格），API Token 可以 "
 								},
 								{
-									"Type": "NodeLink",
-									"Data": "span",
-									"Children": [
-										{
-											"Type": "NodeOpenBracket"
-										},
-										{
-											"Type": "NodeLinkText",
-											"Data": "链滴 - 设置 - 账号"
-										},
-										{
-											"Type": "NodeCloseBracket"
-										},
-										{
-											"Type": "NodeOpenParen"
-										},
-										{
-											"Type": "NodeLinkDest",
-											"Data": "https://ld246.com/settings/account"
-										},
-										{
-											"Type": "NodeCloseParen"
-										}
-									]
+									"Type": "NodeTextMark",
+									"TextMarkType": "a",
+									"TextMarkAHref": "https://ld246.com/settings/account",
+									"TextMarkTextContent": "链滴 - 设置 - 账号"
 								},
 								{
 									"Type": "NodeText",

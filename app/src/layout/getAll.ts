@@ -3,9 +3,13 @@ import {Tab} from "./Tab";
 import {Editor} from "../editor";
 import {Graph} from "./dock/Graph";
 import {Outline} from "./dock/Outline";
-import {Backlinks} from "./dock/Backlinks";
+import {Backlink} from "./dock/Backlink";
 import {Asset} from "../asset";
 import {Search} from "../search";
+import {Files} from "./dock/Files";
+import {Bookmark} from "./dock/Bookmark";
+import {Tag} from "./dock/Tag";
+import {Custom} from "./dock/Custom";
 
 export const getAllModels = () => {
     const models: IModels = {
@@ -13,8 +17,13 @@ export const getAllModels = () => {
         graph: [],
         asset: [],
         outline: [],
-        backlinks: [],
-        search: []
+        backlink: [],
+        search: [],
+        inbox: [],
+        files: [],
+        bookmark: [],
+        tag: [],
+        custom: [],
     };
     const getTabs = (layout: Layout) => {
         for (let i = 0; i < layout.children.length; i++) {
@@ -27,12 +36,20 @@ export const getAllModels = () => {
                     models.graph.push(model);
                 } else if (model instanceof Outline) {
                     models.outline.push(model);
-                } else if (model instanceof Backlinks) {
-                    models.backlinks.push(model);
+                } else if (model instanceof Backlink) {
+                    models.backlink.push(model);
                 } else if (model instanceof Asset) {
                     models.asset.push(model);
                 } else if (model instanceof Search) {
                     models.search.push(model);
+                } else if (model instanceof Files) {
+                    models.files.push(model);
+                } else if (model instanceof Bookmark) {
+                    models.bookmark.push(model);
+                } else if (model instanceof Tag) {
+                    models.tag.push(model);
+                } else if (model instanceof Custom) {
+                    models.custom.push(model);
                 }
             } else {
                 getTabs(item as Layout);
@@ -47,12 +64,12 @@ export const getAllModels = () => {
 };
 
 export const getAllTabs = () => {
-    const models: Tab[] = [];
+    const tabs: Tab[] = [];
     const getTabs = (layout: Layout) => {
         for (let i = 0; i < layout.children.length; i++) {
             const item = layout.children[i];
             if (item instanceof Tab) {
-                models.push(item);
+                tabs.push(item);
             } else {
                 getTabs(item as Layout);
             }
@@ -62,27 +79,22 @@ export const getAllTabs = () => {
     if (window.siyuan.layout.centerLayout) {
         getTabs(window.siyuan.layout.centerLayout);
     }
-    return models;
+    return tabs;
 };
 
 export const getAllDocks = () => {
     const docks: IDockTab[] = [];
-    window.siyuan.config.uiLayout.left.forEach((item: IDockTab[]) => {
+    window.siyuan.config.uiLayout.left.data.forEach((item: IDockTab[]) => {
         item.forEach((dock: IDockTab) => {
             docks.push(dock);
         });
     });
-    window.siyuan.config.uiLayout.right.forEach((item: IDockTab[]) => {
+    window.siyuan.config.uiLayout.right.data.forEach((item: IDockTab[]) => {
         item.forEach((dock: IDockTab) => {
             docks.push(dock);
         });
     });
-    window.siyuan.config.uiLayout.top.forEach((item: IDockTab[]) => {
-        item.forEach((dock: IDockTab) => {
-            docks.push(dock);
-        });
-    });
-    window.siyuan.config.uiLayout.bottom.forEach((item: IDockTab[]) => {
+    window.siyuan.config.uiLayout.bottom.data.forEach((item: IDockTab[]) => {
         item.forEach((dock: IDockTab) => {
             docks.push(dock);
         });

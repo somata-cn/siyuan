@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,31 +19,120 @@ package treenode
 import (
 	"bytes"
 	"strings"
+	"sync"
 
+	"github.com/88250/gulu"
 	"github.com/88250/lute"
 	"github.com/88250/lute/ast"
+	"github.com/88250/lute/editor"
 	"github.com/88250/lute/html"
 	"github.com/88250/lute/lex"
 	"github.com/88250/lute/parse"
+	"github.com/88250/lute/render"
+	"github.com/88250/vitess-sqlparser/sqlparser"
+	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
-func NodeStaticMdContent(node *ast.Node, luteEngine *lute.Lute) (md, content string) {
-	md = FormatNode(node, luteEngine)
-	content = NodeStaticContent(node)
+func GetEmbedBlockRef(embedNode *ast.Node) (blockRefID string) {
+	if nil == embedNode || ast.NodeBlockQueryEmbed != embedNode.Type {
+		return
+	}
+
+	scriptNode := embedNode.ChildByType(ast.NodeBlockQueryEmbedScript)
+	if nil == scriptNode {
+		return
+	}
+
+	stmt := scriptNode.TokensStr()
+	parsedStmt, err := sqlparser.Parse(stmt)
+	if nil != err {
+		return
+	}
+
+	switch parsedStmt.(type) {
+	case *sqlparser.Select:
+		slct := parsedStmt.(*sqlparser.Select)
+		if nil == slct.Where || nil == slct.Where.Expr {
+			return
+		}
+
+		switch slct.Where.Expr.(type) {
+		case *sqlparser.ComparisonExpr: // WHERE id = '20060102150405-1a2b3c4'
+			comp := slct.Where.Expr.(*sqlparser.ComparisonExpr)
+			switch comp.Left.(type) {
+			case *sqlparser.ColName:
+				col := comp.Left.(*sqlparser.ColName)
+				if nil == col || "id" != col.Name.Lowered() {
+					return
+				}
+			}
+			switch comp.Right.(type) {
+			case *sqlparser.SQLVal:
+				val := comp.Right.(*sqlparser.SQLVal)
+				if nil == val || sqlparser.StrVal != val.Type {
+					return
+				}
+
+				idVal := string(val.Val)
+				if !ast.IsNodeIDPattern(idVal) {
+					return
+				}
+				blockRefID = idVal
+			}
+		}
+	}
 	return
+}
+
+func GetBlockRef(n *ast.Node) (blockRefID, blockRefText, blockRefSubtype string) {
+	if !IsBlockRef(n) {
+		return
+	}
+
+	blockRefID = n.TextMarkBlockRefID
+	blockRefText = n.TextMarkTextContent
+	blockRefSubtype = n.TextMarkBlockRefSubtype
+	return
+}
+
+func IsBlockRef(n *ast.Node) bool {
+	if nil == n {
+		return false
+	}
+	return ast.NodeTextMark == n.Type && n.IsTextMarkType("block-ref")
+}
+
+func IsFileAnnotationRef(n *ast.Node) bool {
+	if nil == n {
+		return false
+	}
+	return ast.NodeTextMark == n.Type && n.IsTextMarkType("file-annotation-ref")
+}
+
+func IsEmbedBlockRef(n *ast.Node) bool {
+	return "" != GetEmbedBlockRef(n)
 }
 
 func FormatNode(node *ast.Node, luteEngine *lute.Lute) string {
 	markdown, err := lute.FormatNodeSync(node, luteEngine.ParseOptions, luteEngine.RenderOptions)
 	if nil != err {
 		root := TreeRoot(node)
-		util.LogFatalf("format node [%s] in tree [%s] failed: %s", node.ID, root.ID, err)
+		logging.LogFatalf(logging.ExitCodeFatal, "format node [%s] in tree [%s] failed: %s", node.ID, root.ID, err)
 	}
 	return markdown
 }
 
-func NodeStaticContent(node *ast.Node) string {
+func ExportNodeStdMd(node *ast.Node, luteEngine *lute.Lute) string {
+	markdown, err := lute.ProtyleExportMdNodeSync(node, luteEngine.ParseOptions, luteEngine.RenderOptions)
+	if nil != err {
+		root := TreeRoot(node)
+		logging.LogFatalf(logging.ExitCodeFatal, "export markdown for node [%s] in tree [%s] failed: %s", node.ID, root.ID, err)
+	}
+	return markdown
+}
+
+func NodeStaticContent(node *ast.Node, excludeTypes []string, includeTextMarkATitleURL, includeAssetPath bool) string {
 	if nil == node {
 		return ""
 	}
@@ -68,16 +157,84 @@ func NodeStaticContent(node *ast.Node) string {
 			return ast.WalkContinue
 		}
 
+		if gulu.Str.Contains(n.Type.String(), excludeTypes) {
+			return ast.WalkContinue
+		}
+
 		switch n.Type {
-		case ast.NodeTagOpenMarker, ast.NodeTagCloseMarker:
-			buf.WriteByte('#')
-		case ast.NodeBlockRef:
-			buf.WriteString(GetDynamicBlockRefText(n))
-			lastSpace = false
+		case ast.NodeTableCell:
+			// 表格块写入数据库表时在单元格之间添加空格 https://github.com/siyuan-note/siyuan/issues/7654
+			if 0 < buf.Len() && ' ' != buf.Bytes()[buf.Len()-1] {
+				buf.WriteByte(' ')
+			}
+		case ast.NodeImage:
+			linkDest := n.ChildByType(ast.NodeLinkDest)
+			var linkDestStr, ocrText string
+			if nil != linkDest {
+				linkDestStr = linkDest.TokensStr()
+				ocrText = util.GetAssetText(linkDestStr, false)
+			}
+
+			linkText := n.ChildByType(ast.NodeLinkText)
+			if nil != linkText {
+				buf.Write(linkText.Tokens)
+				buf.WriteByte(' ')
+			}
+			if "" != ocrText {
+				buf.WriteString(ocrText)
+				buf.WriteByte(' ')
+			}
+			if nil != linkDest {
+				if !bytes.HasPrefix(linkDest.Tokens, []byte("assets/")) || includeAssetPath {
+					buf.Write(linkDest.Tokens)
+					buf.WriteByte(' ')
+				}
+			}
+			if linkTitle := n.ChildByType(ast.NodeLinkTitle); nil != linkTitle {
+				buf.Write(linkTitle.Tokens)
+			}
 			return ast.WalkSkipChildren
-		case ast.NodeText, ast.NodeLinkText, ast.NodeLinkTitle, ast.NodeFileAnnotationRefText, ast.NodeFootnotesRef,
-			ast.NodeCodeSpanContent, ast.NodeInlineMathContent, ast.NodeCodeBlockCode, ast.NodeMathBlockContent, ast.NodeHTMLBlock:
+		case ast.NodeLinkText:
 			buf.Write(n.Tokens)
+			buf.WriteByte(' ')
+		case ast.NodeLinkDest:
+			buf.Write(n.Tokens)
+			buf.WriteByte(' ')
+		case ast.NodeLinkTitle:
+			buf.Write(n.Tokens)
+		case ast.NodeText, ast.NodeCodeBlockCode, ast.NodeMathBlockContent, ast.NodeHTMLBlock:
+			tokens := n.Tokens
+			if IsChartCodeBlockCode(n) {
+				// 图表块的内容在数据库 `blocks` 表 `content` 字段中被转义 https://github.com/siyuan-note/siyuan/issues/6326
+				tokens = html.UnescapeHTML(tokens)
+			}
+			buf.Write(tokens)
+		case ast.NodeTextMark:
+			for _, excludeType := range excludeTypes {
+				if strings.HasPrefix(excludeType, "NodeTextMark-") {
+					if n.IsTextMarkType(excludeType[len("NodeTextMark-"):]) {
+						return ast.WalkContinue
+					}
+				}
+			}
+
+			if n.IsTextMarkType("tag") {
+				buf.WriteByte('#')
+			}
+			buf.WriteString(n.Content())
+			if n.IsTextMarkType("tag") {
+				buf.WriteByte('#')
+			}
+			if n.IsTextMarkType("a") && includeTextMarkATitleURL {
+				// 搜索不到超链接元素的 URL 和标题 https://github.com/siyuan-note/siyuan/issues/7352
+				if "" != n.TextMarkATitle {
+					buf.WriteString(" " + html.UnescapeHTMLStr(n.TextMarkATitle))
+				}
+
+				if !strings.HasPrefix(n.TextMarkAHref, "assets/") || includeAssetPath {
+					buf.WriteString(" " + html.UnescapeHTMLStr(n.TextMarkAHref))
+				}
+			}
 		case ast.NodeBackslash:
 			buf.WriteByte(lex.ItemBackslash)
 		case ast.NodeBackslashContent:
@@ -122,12 +279,37 @@ func CountBlockNodes(node *ast.Node) (ret int) {
 }
 
 func ParentNodes(node *ast.Node) (parents []*ast.Node) {
+	const maxDepth = 256
+	i := 0
 	for n := node.Parent; nil != n; n = n.Parent {
+		i++
 		parents = append(parents, n)
 		if ast.NodeDocument == n.Type {
 			return
 		}
+		if maxDepth < i {
+			logging.LogWarnf("parent nodes of node [%s] is too deep", node.ID)
+			return
+		}
 	}
+	return
+}
+
+func ChildBlockNodes(node *ast.Node) (children []*ast.Node) {
+	children = []*ast.Node{}
+	if !node.IsContainerBlock() || ast.NodeDocument == node.Type {
+		children = append(children, node)
+		return
+	}
+
+	ast.Walk(node, func(n *ast.Node, entering bool) ast.WalkStatus {
+		if !entering || !n.IsBlock() {
+			return ast.WalkContinue
+		}
+
+		children = append(children, n)
+		return ast.WalkContinue
+	})
 	return
 }
 
@@ -201,21 +383,11 @@ var typeAbbrMap = map[string]string{
 	"NodeThematicBreak":    "tb",
 	"NodeVideo":            "video",
 	"NodeAudio":            "audio",
-	// 行级元素
-	"NodeText":          "text",
-	"NodeLinkText":      "link_text",
-	"NodeTag":           "tag",
-	"NodeCodeSpan":      "code_span",
-	"NodeInlineMath":    "inline_math",
-	"NodeBlockRefID":    "ref_id",
-	"NodeEmphasis":      "em",
-	"NodeStrong":        "strong",
-	"NodeStrikethrough": "strikethrough",
-	"NodeMark":          "mark",
-	"NodeSup":           "sup",
-	"NodeSub":           "sub",
-	"NodeKbd":           "kbd",
-	"NodeUnderline":     "underline",
+	"NodeText":             "text",
+	"NodeImage":            "img",
+	"NodeLinkText":         "link_text",
+	"NodeLinkDest":         "link_dest",
+	"NodeTextMark":         "textmark",
 }
 
 var abbrTypeMap = map[string]string{}
@@ -269,50 +441,26 @@ func SubTypeAbbr(n *ast.Node) string {
 	return ""
 }
 
-func GetLegacyDynamicBlockRefDefIDs(node *ast.Node) (ret []string) {
-	ast.Walk(node, func(n *ast.Node, entering bool) ast.WalkStatus {
-		if !entering {
-			return ast.WalkContinue
-		}
-		if ast.NodeBlockRefID == n.Type && ast.NodeCloseParen == n.Next.Type {
-			ret = append(ret, n.TokensStr())
-			return ast.WalkSkipChildren
-		}
-		return ast.WalkContinue
-	})
-	return
-}
+var DynamicRefTexts = sync.Map{}
 
 func SetDynamicBlockRefText(blockRef *ast.Node, refText string) {
-	if nil == blockRef {
+	if !IsBlockRef(blockRef) {
 		return
 	}
 
-	idNode := blockRef.ChildByType(ast.NodeBlockRefID)
-	if nil == idNode {
-		return
-	}
+	blockRef.TextMarkBlockRefSubtype = "d"
+	blockRef.TextMarkTextContent = refText
 
-	var spacesRefTexts []*ast.Node // 可能会有多个空格，或者遗留错误插入的锚文本节点，这里做一次订正
-	for n := idNode.Next; ast.NodeCloseParen != n.Type; n = n.Next {
-		spacesRefTexts = append(spacesRefTexts, n)
-	}
-	for _, toRemove := range spacesRefTexts {
-		toRemove.Unlink()
-	}
-	refText = strings.TrimSpace(refText)
-	idNode.InsertAfter(&ast.Node{Type: ast.NodeBlockRefDynamicText, Tokens: []byte(refText)})
-	idNode.InsertAfter(&ast.Node{Type: ast.NodeBlockRefSpace})
+	// 偶发编辑文档标题后引用处的动态锚文本不更新 https://github.com/siyuan-note/siyuan/issues/5891
+	DynamicRefTexts.Store(blockRef.TextMarkBlockRefID, refText)
 }
 
-func GetDynamicBlockRefText(blockRef *ast.Node) string {
-	refText := blockRef.ChildByType(ast.NodeBlockRefText)
-	if nil != refText {
-		return refText.Text()
+func IsChartCodeBlockCode(code *ast.Node) bool {
+	if nil == code.Previous || ast.NodeCodeBlockFenceInfoMarker != code.Previous.Type || 1 > len(code.Previous.CodeBlockInfo) {
+		return false
 	}
-	refText = blockRef.ChildByType(ast.NodeBlockRefDynamicText)
-	if nil != refText {
-		return refText.Text()
-	}
-	return "ref resolve failed"
+
+	language := gulu.Str.FromBytes(code.Previous.CodeBlockInfo)
+	language = strings.ReplaceAll(language, editor.Caret, "")
+	return render.NoHighlight(language)
 }

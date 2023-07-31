@@ -1,4 +1,4 @@
-// SiYuan - Build Your Eternal Digital Garden
+// SiYuan - Refactor your thinking
 // Copyright (c) 2020-present, b3log.org
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,6 +17,7 @@
 package api
 
 import (
+	"github.com/siyuan-note/siyuan/kernel/treenode"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -25,8 +26,9 @@ import (
 	"github.com/88250/lute/ast"
 	"github.com/88250/lute/parse"
 	"github.com/88250/lute/render"
-	"github.com/88250/protyle"
 	"github.com/gin-gonic/gin"
+	"github.com/siyuan-note/filelock"
+	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/model"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
@@ -41,7 +43,7 @@ func copyStdMarkdown(c *gin.Context) {
 	}
 
 	id := arg["id"].(string)
-	ret.Data = model.CopyStdMarkdown(id)
+	ret.Data = model.ExportStdMarkdown(id)
 }
 
 func html2BlockDOM(c *gin.Context) {
@@ -54,13 +56,13 @@ func html2BlockDOM(c *gin.Context) {
 	}
 
 	dom := arg["dom"].(string)
-	luteEngine := model.NewLute()
-	markdown, err := luteEngine.HTML2Markdown(dom)
+	markdown, err := model.HTML2Markdown(dom)
 	if nil != err {
 		ret.Data = "Failed to convert"
 		return
 	}
 
+	luteEngine := util.NewLute()
 	var unlinks []*ast.Node
 	tree := parse.Parse("", []byte(markdown), luteEngine.ParseOptions)
 	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
@@ -69,7 +71,7 @@ func html2BlockDOM(c *gin.Context) {
 		}
 
 		if ast.NodeListItem == n.Type && nil == n.FirstChild {
-			newNode := protyle.NewParagraph()
+			newNode := treenode.NewParagraph()
 			n.AppendChild(newNode)
 			n.SetIALAttr("updated", util.TimeFromID(newNode.ID))
 			return ast.WalkSkipChildren
@@ -82,7 +84,7 @@ func html2BlockDOM(c *gin.Context) {
 		n.Unlink()
 	}
 
-	if "std" == model.Conf.System.Container {
+	if util.ContainerStd == model.Conf.System.Container {
 		// 处理本地资源文件复制
 		ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
 			if !entering || ast.NodeLinkDest != n.Type {
@@ -111,8 +113,8 @@ func html2BlockDOM(c *gin.Context) {
 			name = name[0 : len(name)-len(ext)]
 			name = name + "-" + ast.NewNodeID() + ext
 			targetPath := filepath.Join(util.DataDir, "assets", name)
-			if err = gulu.File.CopyFile(localPath, targetPath); nil != err {
-				util.LogErrorf("copy asset from [%s] to [%s] failed: %s", localPath, targetPath, err)
+			if err = filelock.Copy(localPath, targetPath); nil != err {
+				logging.LogErrorf("copy asset from [%s] to [%s] failed: %s", localPath, targetPath, err)
 				return ast.WalkStop
 			}
 			n.Tokens = gulu.Str.ToBytes("assets/" + name)
@@ -120,7 +122,10 @@ func html2BlockDOM(c *gin.Context) {
 		})
 	}
 
-	renderer := render.NewBlockRenderer(tree, luteEngine.RenderOptions)
+	// 复制带超链接的图片无法保存到本地 https://github.com/siyuan-note/siyuan/issues/5993
+	parse.NestedInlines2FlattedSpans(tree)
+
+	renderer := render.NewProtyleRenderer(tree, luteEngine.RenderOptions)
 	output := renderer.Render()
 	ret.Data = gulu.Str.FromBytes(output)
 }
